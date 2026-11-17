@@ -2,17 +2,19 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Port            string
-	DatabaseURL     string
-	JWTSecret       string
-	AllowedOrigins  []string
-	Environment     string
+	Port               string
+	DatabaseURL        string
+	JWTSecret          string
+	JWTExpirationHours int
+	AllowedOrigins     []string
+	Environment        string
 }
 
 func Load() *Config {
@@ -20,11 +22,7 @@ func Load() *Config {
 	_ = godotenv.Load("../.env")
 	_ = godotenv.Load(".env")
 
-	port := getEnv("PORT", "8080")
-	dbURL := getEnv("DATABASE_URL", "postgres://eneba_user:eneba_password@localhost:5432/eneba_marketplace?sslmode=disable")
-	jwtSecret := getEnv("JWT_SECRET", "super-secret-development-jwt-key-change-in-production-min32chars")
 	originsStr := getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
-	env := getEnv("ENV", "development")
 
 	var origins []string
 	for _, o := range strings.Split(originsStr, ",") {
@@ -34,12 +32,18 @@ func Load() *Config {
 		}
 	}
 
+	expHours, err := strconv.Atoi(getEnv("JWT_EXPIRATION_HOURS", "72"))
+	if err != nil || expHours <= 0 {
+		expHours = 72
+	}
+
 	return &Config{
-		Port:           port,
-		DatabaseURL:    dbURL,
-		JWTSecret:      jwtSecret,
-		AllowedOrigins: origins,
-		Environment:    env,
+		Port:               getEnv("PORT", "8080"),
+		DatabaseURL:        getEnv("DATABASE_URL", "postgres://eneba_user:eneba_password@localhost:5432/eneba_marketplace?sslmode=disable"),
+		JWTSecret:          getEnv("JWT_SECRET", "super-secret-development-jwt-key-change-in-production-min32chars"),
+		JWTExpirationHours: expHours,
+		AllowedOrigins:     origins,
+		Environment:        getEnv("ENV", "development"),
 	}
 }
 

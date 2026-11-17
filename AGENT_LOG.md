@@ -310,3 +310,127 @@ ok  	eneba-marketplace/backend/internal/handlers	0.824s
 2. Implement Transactional Checkout:
    - Atomic digital key assignment (`SELECT ... FOR UPDATE SKIP LOCKED`).
    - Order creation and inventory fulfillment.
+
+
+---
+
+## Turn 4: Write-Side API — Authentication, Transactional Checkout & Order History
+
+### 1. User Prompt
+```text
+Now let's complete the write-side Go backend endpoints for Authentication, Transactional Checkout, and Order History, along with automated tests. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Implement the following endpoints and middleware cleanly:
+
+1. Authentication (`internal/handlers/auth.go`):
+   - `POST /api/auth/register`: Accept `{ "email", "password", "full_name" }`, validate inputs, hash password using `bcrypt`, insert into `users`, and return a signed JWT token + user profile `{ "token", "user": { "id", "email", "full_name" } }`. Handle duplicate email conflicts with `409 Conflict`.
+   - `POST /api/auth/login`: Verify email + `bcrypt` password hash, return `{ "token", "user": { "id", "email", "full_name" } }` or `401 Unauthorized`.
+   - JWT Auth Middleware (`internal/middleware/auth.go`): Validate `Authorization: Bearer <token>` header and attach `user_id` to the request context for protected routes.
+
+2. Transactional Checkout & Digital Key Allocation (`internal/handlers/orders.go`, protected by JWT middleware):
+   - `POST /api/orders/checkout`:
+     - Accept `{ "items": [ { "seller_offer_id": "...", "quantity": 1 } ], "payment_method": "card_sim" }`.
+     - Execute inside a strict PostgreSQL transaction (`pgx.Tx`):
+       1. For each requested item/quantity, lock an `'AVAILABLE'` row from `digital_keys` matching `seller_offer_id` using `SELECT id, license_key FROM digital_keys WHERE seller_offer_id = $1 AND status = 'AVAILABLE' LIMIT $2 FOR UPDATE SKIP LOCKED`.
+       2. If fewer keys are returned than requested quantity, rollback immediately and return `409 Conflict` with a clear out-of-stock message indicating which offer lacks stock.
+       3. Create the `orders` record (`status = 'COMPLETED'`, accurate `total_cents` fetched from `seller_offers` on the server—never trust client-sent prices) and `order_items` records.
+       4. Update the locked `digital_keys` rows to `status = 'SOLD'`, `order_item_id = <new_order_item_id>`, `sold_at = NOW()`.
+       5. Commit transaction and return the full order receipt including every revealed `license_key`, product title, platform, region, seller name, and price paid.
+   - `GET /api/orders`:
+     - Return all past orders for the authenticated `user_id` ordered by `created_at DESC`, including their items and revealed `license_key` strings.
+
+3. Testing & Verification:
+   - Write Go integration tests (`internal/handlers/checkout_test.go`) testing:
+     - Registering a user, logging in, and accessing protected `/api/orders` (verifying `401` when unauthenticated).
+     - Completing a checkout order and verifying the returned `license_key` is marked `'SOLD'` in `digital_keys` and decrements available stock.
+     - Attempting to buy more keys than available returns `409 Conflict` without leaving partial/corrupted order rows.
+   - Run `go test -v ./...` and ensure all tests pass.
+
+Stop after verifying all Go tests pass so we can move on to building the authentic Eneba.com React storefront UI.
+```
+
+### 2. Architectural Plan
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Client
+    participant MW as Auth Middleware (JWT)
+    participant H as OrderHandler
+    participant S as OrderService
+    participant R as OrderRepository
+    participant DB as PostgreSQL (pgx.Tx)
+
+    C->>MW: POST /api/orders/checkout (Bearer token)
+    MW->>MW: Validate HS256 JWT, put user_id in ctx
+    MW->>H: next
+    H->>S: Checkout(userID, request)
+    S->>S: Validate, merge duplicate offers, sort by offer id (deadlock-free lock order)
+    S->>R: Checkout(userID, items)
+    R->>DB: BEGIN
+    loop each offer line
+        R->>DB: SELECT price/product info FROM seller_offers (server-side price)
+        R->>DB: SELECT id, license_key FROM digital_keys ... LIMIT qty FOR UPDATE SKIP LOCKED
+        alt fewer keys than qty
+            R->>DB: ROLLBACK
+            R-->>C: 409 Conflict (offer, requested, available)
+        end
+    end
+    R->>DB: INSERT orders (COMPLETED, server-computed total)
+    loop each locked key
+        R->>DB: INSERT order_items
+        R->>DB: UPDATE digital_keys SET SOLD, order_item_id, sold_at
+    end
+    R->>DB: COMMIT
+    R-->>C: 201 receipt with license keys
+```
+
+Key design decisions:
+- **Concurrency safety**: `FOR UPDATE SKIP LOCKED` ensures two buyers can never lock the same key; the final `UPDATE ... WHERE status='AVAILABLE'` additionally asserts exactly one row changed.
+- **Atomicity**: everything (key locks, order, items, key updates) is one `pgx.Tx`; any failure (including a stock shortage on the *second* cart line) rolls back everything.
+- **Never trust the client**: prices and totals come exclusively from `seller_offers`; extra client fields (`price_cents`, `total_cents`) are ignored.
+- **Deadlock avoidance**: cart lines are merged by offer and sorted by offer id so concurrent multi-item checkouts acquire locks in the same order.
+- **Router extracted** into `internal/router` so `main.go` and integration tests mount the exact same routes/middleware.
+- **JWT**: HS256 via `golang-jwt/jwt/v5`, explicit algorithm allow-list + required expiry; passwords hashed with `bcrypt` (72-byte limit enforced).
+
+### 3. Summary of Changes
+
+New files:
+- `backend/internal/auth/token.go` — `TokenManager` (Generate/Parse HS256 JWT).
+- `backend/internal/middleware/auth.go` — `Authenticate` middleware + `UserIDFromContext`; returns JSON 401 with `WWW-Authenticate`.
+- `backend/internal/repository/users.go` — `Create` (maps PG unique violation `23505` → `ErrEmailTaken`), `GetByEmail`.
+- `backend/internal/repository/orders.go` — transactional `Checkout` and `ListByUser` (orders + items + license keys, newest first); typed `OutOfStockError`.
+- `backend/internal/services/auth.go` — validation (email, name 2–100, password 8–72), bcrypt hashing, login with uniform `ErrInvalidCredentials`.
+- `backend/internal/services/orders.go` — cart validation (1–20 lines, qty 1–10, UUIDs, `payment_method == "card_sim"`), merge + deterministic ordering.
+- `backend/internal/handlers/auth.go`, `backend/internal/handlers/orders.go` — HTTP handlers and status mapping (201/400/401/404/409/500).
+- `backend/internal/router/router.go` — shared router with CORS and public/protected route groups.
+- `backend/internal/handlers/checkout_test.go` — integration tests (see below).
+
+Modified files:
+- `backend/internal/models/models.go` — added `UserProfile`, `AuthResponse`, `RegisterRequest`, `LoginRequest`, `CheckoutRequest/Item`, `OrderDetail`, `OrderItemDetail`.
+- `backend/internal/config/config.go` — added `JWTExpirationHours`.
+- `backend/cmd/api/main.go` — now wires repositories/services/handlers and uses `router.New`.
+- `backend/go.mod` / `go.sum` — added `github.com/golang-jwt/jwt/v5` and `golang.org/x/crypto` (bcrypt).
+
+Endpoints now available:
+| Method | Path | Auth | Success | Errors |
+|---|---|---|---|---|
+| POST | `/api/auth/register` | – | 201 `{token,user}` | 400, 409 |
+| POST | `/api/auth/login` | – | 200 `{token,user}` | 400, 401 |
+| POST | `/api/orders/checkout` | JWT | 201 receipt w/ license keys | 400, 401, 404, 409 |
+| GET | `/api/orders` | JWT | 200 `{orders:[...]}` | 401 |
+
+### 4. Test Results (`go test -v ./...`)
+All 11 tests pass (6 catalog from Turn 3 + 5 new):
+- `TestAuth_RegisterLoginAndProtectedRoute` — 401 without/with garbage token, register 201, duplicate 409, validation 400, wrong password/unknown user 401, login 200, `/api/orders` 200 with empty list.
+- `TestCheckout_Success_MarksKeySoldAndDecrementsStock` — keys are `SOLD` with `order_item_id` + `sold_at`, stock decremented by 2, server-side price used despite client-sent fake price, history returns the same keys.
+- `TestCheckout_OutOfStock_ReturnsConflictWithoutPartialRows` — 409 naming the offer; mixed cart (valid line + out-of-stock line) leaves 0 orders, 0 orphan items, and unchanged stock on both offers.
+- `TestCheckout_Validation` — 400 (empty cart, qty 0, bad UUID, bad payment method), 404 unknown offer, 401 unauthenticated.
+- `TestCheckout_ConcurrentBuyers_NeverDoubleSellKeys` — 8 concurrent buyers vs 3 keys: exactly 3 succeed, 5 get 409, no key sold twice, stock drained to 0.
+
+Tests clean up after themselves (restore sold keys, delete orders and test users); verified DB afterwards: 111 AVAILABLE keys, 0 SOLD, 0 orders, 0 leftover test users.
+
+Environment notes: Go 1.22.5 was installed into the agent's app-data directory (not on the system PATH), so `go` commands are invoked via its full path. Port 8080 could not be probed from the agent sandbox, so the server was verified through the in-process `httptest` integration tests rather than curl.
+
+### 5. Next Step
+Build the authentic Eneba.com-style React storefront UI (homepage blocks, search/filter listing, product page with seller offers, auth, cart/checkout, order history).

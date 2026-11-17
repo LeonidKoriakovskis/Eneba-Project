@@ -148,3 +148,66 @@ type ProductListResponse struct {
 	Limit      int              `json:"limit"`
 	Offset     int              `json:"offset"`
 }
+
+// ---- Authentication ----
+
+// UserProfile is the public representation of a user.
+type UserProfile struct {
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	FullName string `json:"full_name"`
+}
+
+// AuthResponse is returned by register and login.
+type AuthResponse struct {
+	Token string      `json:"token"`
+	User  UserProfile `json:"user"`
+}
+
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	FullName string `json:"full_name"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// ---- Checkout & Orders ----
+
+type CheckoutItem struct {
+	SellerOfferID string `json:"seller_offer_id"`
+	Quantity      int    `json:"quantity"`
+}
+
+type CheckoutRequest struct {
+	Items         []CheckoutItem `json:"items"`
+	PaymentMethod string         `json:"payment_method"`
+}
+
+// OrderItemDetail is one purchased unit including its revealed license key.
+type OrderItemDetail struct {
+	ID             string `json:"id"`
+	SellerOfferID  string `json:"seller_offer_id"`
+	ProductID      string `json:"product_id"`
+	ProductTitle   string `json:"product_title"`
+	ProductSlug    string `json:"product_slug"`
+	Platform       string `json:"platform"`
+	Region         string `json:"region"`
+	SellerName     string `json:"seller_name"`
+	UnitPriceCents int    `json:"unit_price_cents"`
+	LicenseKey     string `json:"license_key"`
+}
+
+// OrderDetail is the full order receipt / history entry.
+type OrderDetail struct {
+	ID            string            `json:"id"`
+	UserID        string            `json:"user_id"`
+	TotalCents    int               `json:"total_cents"`
+	Status        string            `json:"status"`
+	PaymentMethod string            `json:"payment_method,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
+	Items         []OrderItemDetail `json:"items"`
+}
