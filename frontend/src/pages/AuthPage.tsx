@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, KeyRound, Loader2, Lock, Mail, Sparkles, User } from 'lucide-react';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { sanitizeRedirect } from '../utils/format';
@@ -8,6 +9,96 @@ import { useDocumentTitle } from '../utils/hooks';
 
 interface AuthPageProps {
   mode: 'login' | 'register';
+}
+
+export interface AuthValidationParams {
+  isRegister: boolean;
+  fullName: string;
+  email: string;
+  password: string;
+  confirmPassword?: string;
+}
+
+/** Validates sign-in or registration form inputs and returns an inline error message, or null when valid. */
+export function validateAuthInput({
+  isRegister,
+  fullName,
+  email,
+  password,
+  confirmPassword = '',
+}: AuthValidationParams): string | null {
+  const trimmedEmail = email.trim();
+  const trimmedName = fullName.trim();
+
+  if (!trimmedEmail || !trimmedEmail.includes('@')) {
+    return 'Please enter a valid email address.';
+  }
+  if (isRegister && trimmedName.length < 2) {
+    return 'Full name must be at least 2 characters.';
+  }
+  if (isRegister && password.length < 8) {
+    return 'Password must be at least 8 characters.';
+  }
+  if (isRegister && password !== confirmPassword) {
+    return 'Passwords do not match';
+  }
+  if (!isRegister && !password) {
+    return 'Please enter your password.';
+  }
+  return null;
+}
+
+interface PasswordFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  visible: boolean;
+  onToggleVisible: () => void;
+  autoComplete: string;
+  placeholder: string;
+  minLength: number;
+  className: string;
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  visible,
+  onToggleVisible,
+  autoComplete,
+  placeholder,
+  minLength,
+  className,
+}: PasswordFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-extrabold uppercase tracking-wider text-eneba-muted">
+        {label}
+      </span>
+      <div className="relative">
+        <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-eneba-muted" aria-hidden />
+        <input
+          type={visible ? 'text' : 'password'}
+          required
+          minLength={minLength}
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={className}
+        />
+        <button
+          type="button"
+          onClick={onToggleVisible}
+          aria-label={visible ? 'Hide password' : 'Show password'}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-eneba-muted transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
+        >
+          {visible ? <FiEyeOff className="h-4 w-4" aria-hidden /> : <FiEye className="h-4 w-4" aria-hidden />}
+        </button>
+      </div>
+    </label>
+  );
 }
 
 export default function AuthPage({ mode }: AuthPageProps) {
@@ -25,8 +116,18 @@ export default function AuthPage({ mode }: AuthPageProps) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setError(null);
+  }, [mode]);
 
   if (isAuthenticated) {
     return <Navigate to={redirectTarget} replace />;
@@ -42,25 +143,20 @@ export default function AuthPage({ mode }: AuthPageProps) {
     e.preventDefault();
     setError(null);
 
+    const validationError = validateAuthInput({
+      isRegister,
+      fullName,
+      email,
+      password,
+      confirmPassword,
+    });
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     const trimmedEmail = email.trim();
     const trimmedName = fullName.trim();
-
-    if (!trimmedEmail || !trimmedEmail.includes('@')) {
-      setError('Please enter a valid email address.');
-      return;
-    }
-    if (isRegister && trimmedName.length < 2) {
-      setError('Full name must be at least 2 characters.');
-      return;
-    }
-    if (isRegister && password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-    if (!isRegister && !password) {
-      setError('Please enter your password.');
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -79,6 +175,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   const inputClass =
     'w-full rounded-xl bg-eneba-canvas/80 py-3 pl-11 pr-4 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
+  const passwordInputClass =
+    'w-full rounded-xl bg-eneba-canvas/80 py-3 pl-11 pr-11 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
 
   return (
     <div className="mx-auto max-w-md py-6">
@@ -166,24 +264,31 @@ export default function AuthPage({ mode }: AuthPageProps) {
               </div>
             </label>
 
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-extrabold uppercase tracking-wider text-eneba-muted">
-                Password
-              </span>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-eneba-muted" aria-hidden />
-                <input
-                  type="password"
-                  required
-                  minLength={isRegister ? 8 : 1}
-                  autoComplete={isRegister ? 'new-password' : 'current-password'}
-                  placeholder={isRegister ? 'At least 8 characters' : 'Enter your password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-            </label>
+            <PasswordField
+              label="Password"
+              value={password}
+              onChange={setPassword}
+              visible={showPassword}
+              onToggleVisible={() => setShowPassword((prev) => !prev)}
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
+              placeholder={isRegister ? 'At least 8 characters' : 'Enter your password'}
+              minLength={isRegister ? 8 : 1}
+              className={passwordInputClass}
+            />
+
+            {isRegister && (
+              <PasswordField
+                label="Confirm Password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                visible={showConfirmPassword}
+                onToggleVisible={() => setShowConfirmPassword((prev) => !prev)}
+                autoComplete="new-password"
+                placeholder="Re-enter your password"
+                minLength={8}
+                className={passwordInputClass}
+              />
+            )}
 
             <button type="submit" disabled={submitting} className="btn-yellow mt-2 w-full py-3.5 text-base">
               {submitting ? (

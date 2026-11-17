@@ -29,6 +29,7 @@ const {
   sanitizeRedirect,
   serializeMultiParam,
   toggleMultiSelect,
+  validateAuthInput,
 } = require('../.vite-temp/tests/bundle.cjs');
 
 function makeStorage() {
@@ -285,4 +286,41 @@ test('StorePage renders multi-select yellow pills and removable chips for multip
   assert.match(html, /Remove GLOBAL filter/);
   assert.match(html, /Remove EUROPE filter/);
   assert.match(html, /Clear All Filters \(4\)/);
+});
+
+test('AuthPage renders Show password toggles, Confirm Password on register, and validates matching passwords', () => {
+  localStorage.clear();
+
+  const loginHtml = renderWithProviders(React.createElement(AuthPage, { mode: 'login' }), ['/login']);
+  assert.match(loginHtml, /Password/);
+  assert.match(loginHtml, /aria-label="Show password"/);
+  assert.doesNotMatch(loginHtml, /Confirm Password/);
+
+  const registerHtml = renderWithProviders(React.createElement(AuthPage, { mode: 'register' }), ['/register']);
+  assert.match(registerHtml, /Password/);
+  assert.match(registerHtml, /Confirm Password/);
+  assert.match(registerHtml, /placeholder="Re-enter your password"/);
+  const showButtons = registerHtml.match(/aria-label="Show password"/g) ?? [];
+  assert.equal(showButtons.length, 2);
+
+  assert.equal(
+    validateAuthInput({
+      isRegister: true,
+      fullName: 'Alex Gamer',
+      email: 'gamer@eneba-demo.com',
+      password: 'Password123!',
+      confirmPassword: 'Password123!',
+    }),
+    null,
+  );
+  assert.equal(
+    validateAuthInput({
+      isRegister: true,
+      fullName: 'Alex Gamer',
+      email: 'gamer@eneba-demo.com',
+      password: 'Password123!',
+      confirmPassword: 'DifferentPassword!',
+    }),
+    'Passwords do not match',
+  );
 });

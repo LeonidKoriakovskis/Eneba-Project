@@ -863,3 +863,35 @@ Verify `go test -v ./...`, `npm test`, and `npm run build` all pass with zero er
 - `go test -v -count=1 ./...`: **12/12 tests passed** (`ok eneba-marketplace/backend/internal/handlers 2.607s`).
 - `npm test` (frontend): **11/11 tests passed** (`221.31ms`).
 - `npm run build` (`tsc -b && vite build`): exited with code `0` (`1627 modules transformed`, `dist/assets/index-BM4vmi7n.css 39.45 kB`, `dist/assets/index-BbsNp6uR.js 293.90 kB`, built in `4.43s`).
+
+
+---
+
+## Turn 14: Auth Form UX Polish — Password Visibility Toggle & Confirm Password Validation
+
+### 1. User Prompt
+```text
+Let's polish the authentication form (`frontend/src/pages/AuthPage.tsx`) with two standard UX improvements. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`:
+
+1. SHOW / HIDE PASSWORD TOGGLE:
+   - Add an accessible eye / eye-off icon button (using `react-icons`, e.g., `FiEye` / `FiEyeOff`) inside the right side of the Password input on both **Sign In** and **Create Account** tabs (and on the Confirm Password field) so users can toggle between `type="password"` and `type="text"`, with appropriate `aria-label` attributes (`"Show password"` / `"Hide password"`).
+
+2. CONFIRM PASSWORD FIELD (Create Account Tab):
+   - Add a **CONFIRM PASSWORD** input field below **PASSWORD** when the **Create Account** tab is active.
+   - Validate before submitting `POST /api/auth/register` that `password === confirmPassword`, showing a clear inline validation error (`"Passwords do not match"`) if they differ, and reset `confirmPassword` cleanly when switching tabs.
+
+Verify `npm test` and `npm run build` pass with zero errors.
+```
+
+### 2. Summary of Changes
+1. **Password Visibility Toggle & Confirm Password (`frontend/src/pages/AuthPage.tsx`)**:
+   - Imported `FiEye` and `FiEyeOff` from `react-icons/fi` and extracted a reusable `PasswordField` subcomponent with left `Lock` icon, dynamic `type={visible ? 'text' : 'password'}`, `pr-11` clearance for the right-side toggle button, and accessible `aria-label` (`"Show password"` / `"Hide password"`).
+   - Added **Confirm Password** (`Confirm Password` label, `placeholder="Re-enter your password"`, `autoComplete="new-password"`) below **Password** when `isRegister` is true, complete with its own independent visibility toggle (`showConfirmPassword`).
+   - Added and exported `validateAuthInput` so registration checks `password === confirmPassword` before calling `POST /api/auth/register`, displaying the inline error `"Passwords do not match"` when mismatched.
+   - Added a `useEffect` synced to `mode` to reset `confirmPassword`, `showPassword`, `showConfirmPassword`, and `error` whenever the user switches between **Sign In** and **Create Account** tabs.
+2. **Automated Tests (`frontend/scripts/run-tests.mjs`, `frontend/tests/purchaseFlow.test.mjs`)**:
+   - Exported `validateAuthInput` in the test bundle and added a test asserting `Show password` toggle rendering on `/login`, two `Show password` toggles plus `Confirm Password` rendering on `/register`, and mismatch validation (`"Passwords do not match"`).
+
+### 3. Verification Results
+- `npm test` (`frontend/tests/purchaseFlow.test.mjs`): **12/12 tests passed** (`317.71ms`).
+- `npm run build` (`tsc -b && vite build`): exited with code `0` (`1628 modules transformed`, `dist/assets/index-Cmi2eMkG.css 39.55 kB`, `dist/assets/index-HQ6EHaHE.js 296.04 kB`, built in `4.56s`).

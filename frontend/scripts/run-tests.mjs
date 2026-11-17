@@ -27,7 +27,7 @@ export {
 } from '../../src/components/store/FilterSidebar.tsx';
 export { default as StorePage } from '../../src/pages/StorePage.tsx';
 export { default as CartPage } from '../../src/pages/CartPage.tsx';
-export { default as AuthPage } from '../../src/pages/AuthPage.tsx';
+export { default as AuthPage, validateAuthInput } from '../../src/pages/AuthPage.tsx';
 export { default as CheckoutPage } from '../../src/pages/CheckoutPage.tsx';
 export { default as OrdersPage } from '../../src/pages/OrdersPage.tsx';
 export { default as OrderDetailPage } from '../../src/pages/OrderDetailPage.tsx';
