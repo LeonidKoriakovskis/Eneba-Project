@@ -113,15 +113,15 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
             Out of stock
           </span>
         )}
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-1.5 border-t border-white/10 bg-[#12052E]/85 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-white backdrop-blur-sm">
-          <PlatformIcon platform={product.platform} className="h-3.5 w-3.5 shrink-0 text-white" />
-          <span>{platformLabel(product.platform)}</span>
-        </div>
       </div>
 
       {/* Lower card body & hover slide-up action panel */}
       <div className="relative z-20 flex min-h-[236px] shrink-0 flex-col bg-eneba-card p-3.5 transition-[transform,background-color,box-shadow] duration-300 ease-out group-hover:-translate-y-[92px] group-hover:bg-eneba-cardHover group-hover:shadow-[0_-10px_24px_rgba(18,5,46,0.85)] group-focus-within:-translate-y-[92px] group-focus-within:bg-eneba-cardHover group-focus-within:shadow-[0_-10px_24px_rgba(18,5,46,0.85)]">
+        {/* Platform strip rides smoothly along the top edge of the sliding panel */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-full flex items-center justify-center gap-1.5 border-t border-white/10 bg-[#12052E]/85 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-white backdrop-blur-sm">
+          <PlatformIcon platform={product.platform} className="h-3.5 w-3.5 shrink-0 text-white" />
+          <span>{platformLabel(product.platform)}</span>
+        </div>
         <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-extrabold leading-snug text-white">
           <Link to={`/product/${product.slug}`} className="transition-colors hover:text-eneba-yellow focus:outline-none">
             {product.title}

@@ -385,7 +385,7 @@ test('CustomSelect renders accessible violet listbox and ProductCard renders pla
     }),
   );
   assert.match(cardHtml, /aria-label="Add to wishlist"/);
-  assert.match(cardHtml, /Steam/);
+  assert.match(cardHtml, /bottom-full[^>]*>.*?Steam/s);
   assert.match(cardHtml, /GLOBAL/);
   assert.match(cardHtml, /€59\.99/);
   assert.match(cardHtml, /-52%/);

@@ -938,3 +938,29 @@ Verify `npm test` and `npm run build` pass with zero errors, and stop so I can i
 ### 3. Verification Results
 - `npm --prefix "Eneba Project/frontend" test`: **13/13 tests passed** (`232.83ms`).
 - `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1629 modules transformed`, `dist/assets/index-DImV7tsi.css 44.36 kB`, `dist/assets/index-BysCpDS-.js 302.68 kB`, built in `4.61s`).
+
+
+---
+
+## Turn 16: Keep ProductCard Platform Strip Visible During Hover Slide-Up
+
+### 1. User Prompt
+```text
+In `frontend/src/components/ProductCard.tsx`, when hovering over a product card, the sliding bottom info panel currently covers/hides the dark translucent platform badge strip (`Steam`, `PSN`, `Xbox`, `Nintendo`). Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Fix `ProductCard.tsx` so the platform strip stays clearly visible during the hover slide-up animation:
+- Attach the dark translucent platform bar (`Steam`, `PSN`, `Xbox`, `Nintendo`) directly to the top of the sliding content container (or give it a higher `z-index` / move it upward together with the sliding panel) so as the card info and `Add to Cart` / `View Offers` buttons slide up on hover, the platform strip rides smoothly upward with them over the cover art and never disappears.
+
+Verify `npm run build` succeeds cleanly.
+```
+
+### 2. Summary of Changes
+1. **`frontend/src/components/ProductCard.tsx`**:
+   - Moved the dark translucent platform strip (`<PlatformIcon />` + `{platformLabel(product.platform)}`) out of the static cover-image container and attached it to the top edge of the sliding card body using `bottom-full` (`pointer-events-none absolute inset-x-0 bottom-full`).
+   - At rest, the strip sits flush along the bottom edge of the cover artwork; on hover / `focus-within` (`-translate-y-[92px]`), it rides smoothly upward over the cover artwork right above the sliding info and action panel so it stays visible throughout the animation.
+2. **Tests (`frontend/tests/purchaseFlow.test.mjs`)**:
+   - Updated the `ProductCard` assertion to confirm the platform strip (`bottom-full`) is attached directly to the sliding content panel.
+
+### 3. Verification Results
+- `npm --prefix "Eneba Project/frontend" test`: **13/13 tests passed** (`253.06ms`).
+- `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1629 modules transformed`, `dist/assets/index-CDooWhr0.css 44.38 kB`, `dist/assets/index-Dg-0IktU.js 302.68 kB`, built in `4.20s`).
