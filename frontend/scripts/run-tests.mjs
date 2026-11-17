@@ -13,12 +13,18 @@ mkdirSync(tempDir, { recursive: true });
 // Virtual entry bundling the source modules needed by frontend tests.
 const entrySource = `
 export { cartReducer, CartProvider, MAX_QTY_PER_OFFER } from '../../src/context/CartContext.tsx';
+export {
+  WishlistProvider,
+  wishlistReducer,
+  WISHLIST_STORAGE_KEY,
+} from '../../src/context/WishlistContext.tsx';
 export { AuthProvider } from '../../src/context/AuthContext.tsx';
 export { sanitizeRedirect, formatPrice, formatDateTime } from '../../src/utils/format.ts';
 export { OrderKeyCard } from '../../src/components/orders/OrderKeyCard.tsx';
 export { CartDrawer } from '../../src/components/CartDrawer.tsx';
 export { CustomSelect } from '../../src/components/CustomSelect.tsx';
 export { ProductCard } from '../../src/components/ProductCard.tsx';
+export { Navbar } from '../../src/components/Navbar.tsx';
 export { isFuzzyMatch } from '../../src/components/SearchBar.tsx';
 export {
   STORE_PLATFORMS,
@@ -29,6 +35,7 @@ export {
 } from '../../src/components/store/FilterSidebar.tsx';
 export { default as StorePage } from '../../src/pages/StorePage.tsx';
 export { default as CartPage } from '../../src/pages/CartPage.tsx';
+export { default as WishlistPage } from '../../src/pages/WishlistPage.tsx';
 export { default as AuthPage, validateAuthInput } from '../../src/pages/AuthPage.tsx';
 export { default as CheckoutPage } from '../../src/pages/CheckoutPage.tsx';
 export { default as OrdersPage } from '../../src/pages/OrdersPage.tsx';

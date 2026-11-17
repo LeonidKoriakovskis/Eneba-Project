@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Check, Heart, Loader2, ShoppingCart } from 'lucide-react';
 import type { ProductSummary } from '../types/api';
 import { api } from '../api/client';
-import { MAX_QTY_PER_OFFER, useCart } from '../context/CartContext';
+import { MAX_QTY_PER_OFFER, useCart, type NewCartItem } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import { formatPrice } from '../utils/format';
 import { CoverImage } from './CoverImage';
 import { DiscountPill } from './Badges';
@@ -18,11 +19,47 @@ function platformLabel(platform: string): string {
   return platform;
 }
 
-export function ProductCard({ product, className = '' }: { product: ProductSummary; className?: string }) {
+/** Fetches the lowest-priced available seller offer for a product and adds it to the cart. */
+export async function addBestOfferToCart(
+  product: ProductSummary,
+  addItem: (item: NewCartItem, quantity?: number, options?: { openDrawer?: boolean }) => void,
+): Promise<boolean> {
+  const detail = await api.getProduct(product.slug);
+  const bestOffer = (detail.offers ?? []).find((o) => o.in_stock && o.available_keys_count > 0);
+  if (!bestOffer) return false;
+
+  addItem(
+    {
+      sellerOfferId: bestOffer.id,
+      productId: product.id,
+      slug: product.slug,
+      title: product.title,
+      coverImageUrl: product.cover_image_url,
+      platform: product.platform,
+      region: product.region,
+      sellerName: bestOffer.seller_name,
+      unitPriceCents: bestOffer.price_cents,
+      originalPriceCents: bestOffer.original_price_cents,
+      maxQuantity: Math.min(MAX_QTY_PER_OFFER, bestOffer.available_keys_count),
+    },
+    1,
+    { openDrawer: true },
+  );
+  return true;
+}
+
+interface ProductCardProps {
+  product: ProductSummary;
+  className?: string;
+  moveToCartOnAdd?: boolean;
+}
+
+export function ProductCard({ product, className = '', moveToCartOnAdd = false }: ProductCardProps) {
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { isWishlisted, toggleWishlist, removeFromWishlist } = useWishlist();
 
-  const [wishlisted, setWishlisted] = useState(false);
+  const wishlisted = isWishlisted(product.id);
   const [adding, setAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
@@ -38,7 +75,7 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
   const handleToggleWishlist = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setWishlisted((prev) => !prev);
+    toggleWishlist(product);
   };
 
   const handleQuickAdd = async (e: MouseEvent<HTMLButtonElement>) => {
@@ -48,30 +85,14 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
 
     setAdding(true);
     try {
-      const detail = await api.getProduct(product.slug);
-      const bestOffer = (detail.offers ?? []).find((o) => o.in_stock && o.available_keys_count > 0);
-      if (!bestOffer) {
+      const added = await addBestOfferToCart(product, addItem);
+      if (!added) {
         navigate(`/product/${product.slug}`);
         return;
       }
-
-      addItem(
-        {
-          sellerOfferId: bestOffer.id,
-          productId: product.id,
-          slug: product.slug,
-          title: product.title,
-          coverImageUrl: product.cover_image_url,
-          platform: product.platform,
-          region: product.region,
-          sellerName: bestOffer.seller_name,
-          unitPriceCents: bestOffer.price_cents,
-          originalPriceCents: bestOffer.original_price_cents,
-          maxQuantity: Math.min(MAX_QTY_PER_OFFER, bestOffer.available_keys_count),
-        },
-        1,
-        { openDrawer: true },
-      );
+      if (moveToCartOnAdd) {
+        removeFromWishlist(product.id);
+      }
       setJustAdded(true);
     } catch {
       navigate(`/product/${product.slug}`);
@@ -175,7 +196,7 @@ export function ProductCard({ product, className = '' }: { product: ProductSumma
             ) : (
               <>
                 <ShoppingCart className="h-3.5 w-3.5" aria-hidden />
-                {inStock ? 'Add to Cart' : 'Out of Stock'}
+                {inStock ? (moveToCartOnAdd ? 'Move to Cart' : 'Add to Cart') : 'Out of Stock'}
               </>
             )}
           </button>

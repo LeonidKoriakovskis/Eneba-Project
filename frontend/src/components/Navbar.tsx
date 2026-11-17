@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
-import { ShoppingCart } from 'lucide-react';
+import { Heart, ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import { SearchBar } from './SearchBar';
 import { AccountMenu } from './AccountMenu';
 
@@ -12,6 +13,30 @@ export function Logo() {
         <path d="M10 8h12v3.5h-8.2v3H21v3.5h-7.2v3H22V24H10z" fill="#1F0A4D" />
       </svg>
       <span className="text-2xl font-black lowercase tracking-tight text-white">eneba</span>
+    </Link>
+  );
+}
+
+function WishlistButton() {
+  const { count } = useWishlist();
+  return (
+    <Link
+      to="/wishlist"
+      aria-label={`Wishlist, ${count} item${count === 1 ? '' : 's'}`}
+      className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg bg-eneba-canvas/60 ring-1 ring-white/10 transition hover:bg-eneba-canvas focus:outline-none focus-visible:shadow-glow"
+    >
+      <Heart
+        className={`h-5 w-5 transition ${count > 0 ? 'fill-eneba-magenta text-eneba-magenta' : 'text-white'}`}
+        aria-hidden
+      />
+      {count > 0 && (
+        <span
+          data-testid="wishlist-badge"
+          className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-eneba-magenta px-1 text-[11px] font-black leading-none text-white ring-2 ring-eneba-brand"
+        >
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
     </Link>
   );
 }
@@ -61,6 +86,7 @@ export function Navbar() {
         </div>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <WishlistButton />
           <CartButton />
           <AccountMenu />
         </div>

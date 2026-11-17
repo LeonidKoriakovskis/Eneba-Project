@@ -15,6 +15,7 @@ const {
   CustomSelect,
   MAX_QTY_PER_OFFER,
   MemoryRouter,
+  Navbar,
   OrderDetailPage,
   OrderKeyCard,
   OrdersPage,
@@ -24,6 +25,9 @@ const {
   STORE_PLATFORMS,
   STORE_REGIONS,
   StorePage,
+  WISHLIST_STORAGE_KEY,
+  WishlistPage,
+  WishlistProvider,
   AuthPage,
   cartReducer,
   isFuzzyMatch,
@@ -32,6 +36,7 @@ const {
   serializeMultiParam,
   toggleMultiSelect,
   validateAuthInput,
+  wishlistReducer,
 } = require('../.vite-temp/tests/bundle.cjs');
 
 function makeStorage() {
@@ -79,7 +84,11 @@ function renderWithProviders(node, initialEntries = ['/']) {
     React.createElement(
       MemoryRouter,
       { initialEntries },
-      React.createElement(AuthProvider, null, React.createElement(CartProvider, null, node)),
+      React.createElement(
+        AuthProvider,
+        null,
+        React.createElement(CartProvider, null, React.createElement(WishlistProvider, null, node)),
+      ),
     ),
   );
 }
@@ -393,4 +402,59 @@ test('CustomSelect renders accessible violet listbox and ProductCard renders pla
   assert.match(cardHtml, /Add to Cart/);
   assert.match(cardHtml, /View Offers/);
   assert.match(cardHtml, /href="\/product\/cyberpunk-2077-phantom-liberty-bundle"/);
+});
+
+test('wishlistReducer persists items in eneba_wishlist, Navbar shows live count badge, and WishlistPage renders empty and populated states', () => {
+  const sampleProduct = {
+    id: '11111111-0000-0000-0000-000000000001',
+    title: 'Cyberpunk 2077: Phantom Liberty Bundle',
+    slug: 'cyberpunk-2077-phantom-liberty-bundle',
+    description: 'Open-world RPG',
+    cover_image_url: 'https://example.com/cp77.jpg',
+    platform: 'Steam',
+    region: 'GLOBAL',
+    genre: 'Action RPG',
+    release_date: '2020-12-10',
+    lowest_price_cents: 2899,
+    original_price_cents: 5999,
+    discount_percent: 52,
+    best_seller_name: 'PixelVault Deals',
+    best_seller_rating: 4.9,
+    total_stock_count: 5,
+    total_offers_count: 3,
+  };
+
+  let state = wishlistReducer([], { type: 'toggle', product: sampleProduct });
+  assert.equal(state.length, 1);
+  assert.equal(state[0].id, sampleProduct.id);
+
+  // Toggling again removes the product
+  state = wishlistReducer(state, { type: 'toggle', product: sampleProduct });
+  assert.equal(state.length, 0);
+
+  // Adding and removing by ID
+  state = wishlistReducer([], { type: 'toggle', product: sampleProduct });
+  state = wishlistReducer(state, { type: 'remove', productId: sampleProduct.id });
+  assert.equal(state.length, 0);
+
+  localStorage.clear();
+  const emptyWishlistHtml = renderWithProviders(React.createElement(WishlistPage), ['/wishlist']);
+  assert.match(emptyWishlistHtml, /Your wishlist is empty/);
+  assert.match(emptyWishlistHtml, /href="\/store"/);
+  assert.match(emptyWishlistHtml, /Browse Store/);
+
+  assert.equal(WISHLIST_STORAGE_KEY, 'eneba_wishlist');
+  localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify([sampleProduct]));
+
+  const navbarHtml = renderWithProviders(React.createElement(Navbar), ['/']);
+  assert.match(navbarHtml, /href="\/wishlist"/);
+  assert.match(navbarHtml, /data-testid="wishlist-badge"[^>]*>1<\/span>/);
+
+  const fullWishlistHtml = renderWithProviders(React.createElement(WishlistPage), ['/wishlist']);
+  assert.match(fullWishlistHtml, /My Wishlist/);
+  assert.match(fullWishlistHtml, /Cyberpunk 2077: Phantom Liberty Bundle/);
+  assert.match(fullWishlistHtml, /aria-label="Remove from wishlist"/);
+  assert.match(fullWishlistHtml, /aria-pressed="true"/);
+  assert.match(fullWishlistHtml, /Move to Cart/);
+  localStorage.clear();
 });

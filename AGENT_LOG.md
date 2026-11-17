@@ -964,3 +964,46 @@ Verify `npm run build` succeeds cleanly.
 ### 3. Verification Results
 - `npm --prefix "Eneba Project/frontend" test`: **13/13 tests passed** (`253.06ms`).
 - `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1629 modules transformed`, `dist/assets/index-CDooWhr0.css 44.38 kB`, `dist/assets/index-Dg-0IktU.js 302.68 kB`, built in `4.20s`).
+
+
+---
+
+## Turn 17: Persistent Client-Side Wishlist (`WishlistContext`, `ProductCard`, `Navbar` & `/wishlist`)
+
+### 1. User Prompt
+```text
+Since each `ProductCard` already renders a heart icon on hover, let's make it genuinely functional with a lightweight, client-side Wishlist (`localStorage`-persisted) so there are zero dead UI buttons during reviewer testing. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Implement this cleanly without altering the backend database schema:
+
+1. WISHLIST CONTEXT (`frontend/src/context/WishlistContext.tsx`):
+   - Store saved product objects/IDs in `localStorage` (`eneba_wishlist`) with `toggleWishlist(product)`, `isWishlisted(productId)`, `removeFromWishlist(productId)`, and `count`.
+
+2. PRODUCT CARD HEART BUTTON (`frontend/src/components/ProductCard.tsx`):
+   - Wire the top-right heart button to `toggleWishlist(product)` (`e.preventDefault(); e.stopPropagation()` so clicking the heart does not navigate to the product page).
+   - Keep the button visible whenever a game is already wishlisted (with a filled magenta/rose heart icon) and show it on hover when un-wishlisted.
+
+3. NAVBAR ICON & WISHLIST PAGE (`frontend/src/components/Navbar.tsx` & `frontend/src/pages/WishlistPage.tsx`):
+   - Add a compact heart icon button with a live count badge in the top navbar next to the Cart button linking to `/wishlist`.
+   - Create `/wishlist` displaying saved games in the same `ProductCard` grid with a `"Move to Cart"` action and an empty-state CTA linking back to `/store`.
+
+Verify `npm test` and `npm run build` pass with zero errors.
+```
+
+### 2. Summary of Changes
+1. **Wishlist Context (`frontend/src/context/WishlistContext.tsx`, `frontend/src/main.tsx`)**:
+   - Implemented `WishlistProvider`, `useWishlist`, and `wishlistReducer` persisting saved `ProductSummary` items to `localStorage` under `eneba_wishlist` (with multi-tab `storage` sync and safe JSON validation).
+   - Exposes `items`, `count`, `toggleWishlist(product)`, `isWishlisted(productId)`, `removeFromWishlist(productId)`, and `clearWishlist()`.
+   - Mounted `<WishlistProvider>` in `frontend/src/main.tsx` inside `<CartProvider>`.
+2. **ProductCard Heart Wiring & Shared Offer Helper (`frontend/src/components/ProductCard.tsx`)**:
+   - Connected the top-right heart button to `toggleWishlist(product)` (with `e.preventDefault(); e.stopPropagation()`), keeping the filled magenta heart pinned visible (`opacity-100`) when saved and revealed on hover when un-wishlisted.
+   - Exported `addBestOfferToCart` to share lowest-priced offer checkout resolution between `ProductCard` and `WishlistPage`, and added `moveToCartOnAdd` support.
+3. **Navbar Wishlist Icon & `/wishlist` Page (`frontend/src/components/Navbar.tsx`, `frontend/src/pages/WishlistPage.tsx`, `frontend/src/App.tsx`)**:
+   - Added a compact heart icon button (`<WishlistButton />`) next to `<CartButton />` linking to `/wishlist` with a live magenta count badge (`data-testid="wishlist-badge"`).
+   - Created `WishlistPage.tsx` and wired `/wishlist` in `App.tsx`, rendering the saved `ProductCard` grid with `"Move to Cart"` actions (adding the best offer to the Cart Drawer and removing from wishlist), quick removal, `"Clear Wishlist"`, and an empty-state `"Browse Store"` CTA linking to `/store`.
+4. **Automated Tests (`frontend/scripts/run-tests.mjs`, `frontend/tests/purchaseFlow.test.mjs`)**:
+   - Wrapped `renderWithProviders` with `<WishlistProvider>` and added tests covering `wishlistReducer`, `eneba_wishlist` persistence, the `Navbar` live wishlist badge, and `WishlistPage` empty & populated states (`Move to Cart`).
+
+### 3. Verification Results
+- `npm --prefix "Eneba Project/frontend" test`: **14/14 tests passed** (`236.70ms`).
+- `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1631 modules transformed`, `dist/assets/index-CuaJBWER.css 44.55 kB`, `dist/assets/index-DX9l-WnX.js 309.01 kB`, built in `3.92s`).
