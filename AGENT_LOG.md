@@ -434,3 +434,90 @@ Environment notes: Go 1.22.5 was installed into the agent's app-data directory (
 
 ### 5. Next Step
 Build the authentic Eneba.com-style React storefront UI (homepage blocks, search/filter listing, product page with seller offers, auth, cart/checkout, order history).
+
+
+---
+
+## Turn 5: React + TypeScript Eneba Storefront (Homepage, Store Catalog & Product Page)
+
+### 1. User Prompt
+```text
+Now that the entire Go backend API is complete and all 11 integration tests pass, let's build the React + TypeScript storefront modeled closely after eneba.com's visual identity and user flow. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Let's build the complete storefront experience in two focused parts, starting with the visual design system, persistent navigation, dynamic Homepage, Store catalog, and Product detail page:
+
+1. ENEBA VISUAL DESIGN SYSTEM & LAYOUT:
+   - Match Eneba's authentic color palette and dense digital marketplace aesthetic:
+     - Deep violet-indigo page canvas (`#1F0A4D` / `#2B0F6B`), saturated purple header & cards (`#4618AC` / `#37128A`), crisp white typography, vibrant yellow CTAs (`#FFDC00` with dark text `#1F0A4D`), and orange/magenta discount badges (`#FD5A20` / `#FF2E63`).
+   - Persistent Top Navbar (present on every screen):
+     - Eneba-style brand logo linking to `/`.
+     - Global live search bar (`Search games, keys, platforms...`) that works from anywhere in the app: typing shows a live debounced dropdown of matching games (leveraging our backend's `pg_trgm` typo-tolerant search) and pressing Enter navigates to `/store?q=...`.
+     - Quick navigation link to `Store` (`/store`).
+     - Cart button showing live item count badge (opens Cart drawer or navigates to `/cart`).
+     - Account menu: `Sign In / Register` button when logged out, or user's name + `My Orders` link + `Logout` when signed in.
+
+2. DYNAMIC BLOCK-DRIVEN HOMEPAGE (`/`):
+   - Fetch `GET /api/homepage` and render blocks purely from the API response order and `block_type` with zero hardcoded product lists:
+     - `hero_banner`: Full-width featured game/promo banner with cover art, callout badge, starting price, and `Buy Now` CTA linking to the product page.
+     - `best_sellers` / `flash_deals` / `recommended`: Responsive grids of vertical game cover cards featuring:
+       - Game cover artwork (with clean gradient/SVG fallback if an external image fails to load),
+       - Platform badge (Steam, PSN, Xbox, Nintendo) & Region tag (`GLOBAL`, `EUROPE`, `US` in Eneba's signature teal/emerald highlight),
+       - Discount percentage pill, original strikethrough price, and bold starting price (`From €XX.XX`),
+       - Out-of-stock indicator if total available keys = 0.
+
+3. STORE CATALOG PAGE (`/store`):
+   - Connect directly to `GET /api/products` syncing URL query params (`q`, `platform`, `region`, `min_price`, `max_price`, `sort`).
+   - Left Filter Sidebar (collapsible on mobile):
+     - Platform checkboxes/pills (`All`, `Steam`, `PSN`, `Xbox`, `Nintendo`),
+     - Region filter (`All`, `GLOBAL`, `EUROPE`, `US`),
+     - Price range inputs (Min € / Max €),
+     - "Clear All Filters" button.
+   - Top Sort & Result Bar: Sort dropdown (`Most Popular`, `Price: Low to High`, `Price: High to Low`, `Newest`) + active search query badge + result count.
+
+4. SINGLE PRODUCT PAGE (`/product/:slug`):
+   - Fetch `GET /api/products/{slug}`:
+     - Upper Hero Card: Large game cover art, title, platform & region badges, genre, release date, description, and a highlighted **"Featured / Best Offer"** box with instant `Add to Cart` and `Buy Now` buttons.
+     - **Compare Seller Offers** Section below: Clean table/list of all `seller_offers` sorted by price, showing seller name, star rating + review count, available stock count (`X keys in stock` or `Sold Out`), unit price, and individual `Add to Cart` button so buyers can compare sellers and pick their preferred offer.
+
+5. STATE MANAGEMENT & TYPES:
+   - Create clean TypeScript interfaces matching all backend JSON responses (`src/types/api.ts`), a centralized API client (`src/api/client.ts`) reading `VITE_API_URL` (defaulting to `http://localhost:8080`), plus `AuthContext` and `CartContext` (persisted in `localStorage`) ready for the Checkout and Order flow in the next step.
+
+Build and verify the TypeScript compilation (`npm run build`) with zero errors, and stop so I can inspect the live storefront before we wire up the Cart, Sign-In, Checkout, and Key Reveal screens.
+```
+
+### 2. Summary of Changes
+- Installed `react-router-dom` (`6.28.2`).
+- Configured Eneba palette & utility classes in `frontend/tailwind.config.js`, `frontend/src/index.css`, and `frontend/index.html`.
+- Added strict API contracts (`frontend/src/types/api.ts`), typed fetch client (`frontend/src/api/client.ts`), format/block/hook helpers (`frontend/src/lib/`), `AuthContext` (`frontend/src/context/AuthContext.tsx`), and `localStorage`-backed `CartContext` (`frontend/src/context/CartContext.tsx`).
+- Built shared layout & UI components: `Layout.tsx`, `Navbar.tsx`, `SearchBar.tsx` (debounced live suggestions via `pg_trgm`), `AccountMenu.tsx`, `ProductCard.tsx`, `CoverImage.tsx`, `Badges.tsx`, `ErrorState.tsx`.
+- Built pages: `HomePage.tsx` (`HeroBanner.tsx`, `ProductBlock.tsx` driven dynamically by `GET /api/homepage`), `StorePage.tsx` (`FilterSidebar.tsx` synced with URL query params), `ProductPage.tsx` (hero offer + seller comparison table), `ComingSoonPage.tsx`, and `NotFoundPage.tsx`.
+- Verified `npm run build` (`tsc -b && vite build`) succeeded with zero errors.
+
+---
+
+## Turn 6: Fix Tailwind / PostCSS `text-eneba-ink` Build Error in Vite
+
+### 1. User Prompt
+```text
+Vite PostCSS threw a 500 build error in `frontend/src/index.css` line 47:
+`The 'text-eneba-ink' class does not exist.`
+
+Inspect `frontend/src/index.css` and `frontend/tailwind.config.js` (or `.ts`). Ensure every custom `eneba-*` color and shadow token referenced via `@apply` in `index.css` (such as `eneba-ink`, `eneba-yellow`, `eneba-yellowHover`, `glow`, etc.) is properly defined under `theme.extend` in the Tailwind config, and verify `npm run build` succeeds with zero CSS errors. Remember to append this turn to `AGENT_LOG.md`.
+```
+
+### 2. Root Cause & Architectural Plan
+- **Root Cause**: Because `frontend/package.json` sets `"type": "module"`, Tailwind v3 loads `.js` config files via Node's native ESM `import()`, which caches the earlier `tailwind.config.js` (from Step 1, lacking `eneba-ink`, `eneba-yellowHover`, etc.) in long-lived Vite dev server processes (such as the already-running Vite server on port 5173).
+- **Plan**:
+  1. Define all `eneba-*` color tokens both under `theme.extend.colors.eneba` and as flat keys in `frontend/tailwind.config.js` and `frontend/tailwind.config.cjs`, along with `boxShadow.card` and `boxShadow.glow`.
+  2. Point `frontend/src/index.css` (`@config "../tailwind.config.cjs";`) and `frontend/postcss.config.js` (`tailwindcss: { config: "./tailwind.config.cjs" }`) to the CommonJS config so both fresh builds and running Vite dev servers resolve all tokens cleanly.
+  3. Reference `postcss.config.js` explicitly in `frontend/vite.config.ts`.
+  4. Verify both `npm run build` and `http://localhost:5173/src/index.css`.
+
+### 3. Summary of Changes
+- Updated `frontend/tailwind.config.js` and added `frontend/tailwind.config.cjs` defining nested `eneba` colors, flat `eneba-*` keys (`eneba-canvas`, `eneba-canvasLight`, `eneba-brand`, `eneba-card`, `eneba-cardHover`, `eneba-line`, `eneba-yellow`, `eneba-yellowHover`, `eneba-ink`, `eneba-orange`, `eneba-magenta`, `eneba-teal`, `eneba-muted`), `fontFamily.sans`, and `boxShadow` (`card`, `glow`).
+- Updated `frontend/src/index.css` to declare `@config "../tailwind.config.cjs";` before `@tailwind base;`.
+- Updated `frontend/postcss.config.js` to pass `{ config: "./tailwind.config.cjs" }` to `tailwindcss`, and updated `frontend/vite.config.ts` with `css: { postcss: './postcss.config.js' }`.
+
+### 4. Verification Results
+- `npm run build` (`tsc -b && vite build`) exited with code 0 (`dist/assets/index-DptZW4Vk.css 31.45 kB`, `dist/assets/index-CUb_1N7u.js 229.94 kB`, built in 3.89s).
+- `curl.exe -s -i http://localhost:5173/src/index.css` returned `HTTP/1.1 200 OK` with compiled `.btn-yellow` and `.btn-outline` rules using `rgb(31 10 77 ...)` for `text-eneba-ink` and `rgb(255 220 0 ...)` for `bg-eneba-yellow`.
