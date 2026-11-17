@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: eneba_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eneba_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eneba_password}
+      POSTGRES_DB: ${POSTGRES_DB:-eneba_marketplace}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eneba_user} -d ${POSTGRES_DB:-eneba_marketplace}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
