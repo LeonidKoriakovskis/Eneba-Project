@@ -14,7 +14,7 @@ mkdirSync(tempDir, { recursive: true });
 const entrySource = `
 export { cartReducer, CartProvider, MAX_QTY_PER_OFFER } from '../../src/context/CartContext.tsx';
 export { AuthProvider } from '../../src/context/AuthContext.tsx';
-export { sanitizeRedirect, formatPrice, formatDateTime } from '../../src/lib/format.ts';
+export { sanitizeRedirect, formatPrice, formatDateTime } from '../../src/utils/format.ts';
 export { OrderKeyCard } from '../../src/components/orders/OrderKeyCard.tsx';
 export { default as CartPage } from '../../src/pages/CartPage.tsx';
 export { default as AuthPage } from '../../src/pages/AuthPage.tsx';
@@ -77,5 +77,5 @@ try {
     process.exit(res.status ?? 1);
   }
 } finally {
-  rmSync(tempDir, { recursive: true, force: true });
+  rmSync(resolve(rootDir, '.vite-temp'), { recursive: true, force: true });
 }

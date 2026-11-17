@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import { centsToEuroInput, euroInputToCents } from '../../lib/format';
+import { centsToEuroInput, euroInputToCents } from '../../utils/format';
 import { PlatformIcon } from '../PlatformBadge';
 
 export interface StoreFilters {

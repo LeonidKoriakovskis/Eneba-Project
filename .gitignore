@@ -2,6 +2,8 @@
 .env
 .env.local
 *.env
+!.env.example
+!frontend/.env.example
 
 # Operating System Files
 .DS_Store
@@ -14,6 +16,7 @@ Thumbs.db
 *.swo
 
 # Backend Go
+backend/api
 backend/bin/
 backend/dist/
 *.exe
@@ -25,10 +28,15 @@ backend/dist/
 *.out
 
 # Frontend Node / Vite
+node_modules/
 frontend/node_modules/
+dist/
 frontend/dist/
 frontend/.cache/
 frontend/build/
+.vite/
+.vite-temp/
+frontend/.vite-temp/
 *.tsbuildinfo
 .npm
 .eslintcache

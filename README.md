@@ -1,128 +1,201 @@
 # Eneba Digital Game Marketplace
 
-A full-stack digital game key marketplace modeled after **eneba.com**, built for the Eneba Software Engineer Internship assignment.
+![Go](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat-square&logo=go&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B_pg__trgm-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
-The platform implements a dynamic block-driven homepage, PostgreSQL `pg_trgm` typo-tolerant game search, multi-seller offer comparison, JWT authentication, and race-condition-free atomic digital key fulfillment.
+A full-stack digital game key marketplace modeled after **eneba.com**, built for the **Eneba Software Engineer Internship** assignment. It combines a dynamic CMS-driven storefront, PostgreSQL trigram fuzzy search, multi-seller offer comparison, JWT authentication, and race-condition-free atomic digital key allocation.
 
 ---
 
-## Live Demo & Reviewer Credentials
+## Live Demo & Reviewer Quick-Start
 
-You can explore the catalog without signing in, create a new account via `/register`, or use the pre-seeded **Demo Buyer** account (also available as a one-click **Quick-fill** button on `/login`):
+| Service | Deployment URL | Purpose |
+| :--- | :--- | :--- |
+| **Live Frontend (Vercel)** | `https://<your-vercel-app>.vercel.app` | Interactive Storefront, Cart, Checkout & Key Vault |
+| **Backend Health Check (Render)** | `https://<your-render-api>.onrender.com/api/health` | Verifies Go API & PostgreSQL connection pool |
+
+### Pre-Seeded Reviewer Account
+You can browse and search freely, register a new account at `/register`, or use the one-click **Quick-fill** demo button on `/login`:
 
 - **Email:** `gamer@eneba-demo.com`
 - **Password:** `Password123!`
 
-> Note: The Go backend idempotently seeds demo accounts (`gamer@eneba-demo.com` and `intern@eneba-demo.com`) at startup via `EnsureDemoUsers` in addition to `backend/migrations/002_seed.sql`.
+> Note: `AuthService.EnsureDemoUsers` idempotently upserts both `gamer@eneba-demo.com` and `intern@eneba-demo.com` with valid `bcrypt` hashes at server startup alongside `backend/migrations/002_seed.sql`.
 
 ---
 
-## Architecture & Technical Choices
+## System Architecture
+
+```text
++-----------------------------------+        REST JSON + JWT         +------------------------------------------+
+|     React 18 + TS + Tailwind      | -----------------------------> |     Go HTTP API (chi v5 + pgx/v5)        |
+|  (/frontend -> Vercel SPA)        | <----------------------------- |  (/backend -> Docker / Render)           |
++-----------------------------------+                                +------------------------------------------+
+                                                                                          |
+                                                                                          | pgxpool (Tx + Row Locks)
+                                                                                          v
+                                                                     +------------------------------------------+
+                                                                     |  PostgreSQL 16+ (pg_trgm + uuid-ossp)    |
+                                                                     |  (Docker / Neon / Supabase)              |
+                                                                     +------------------------------------------+
+```
 
 ```mermaid
 graph LR
-    FE["React + TypeScript + Tailwind\n(/frontend -> Vercel)"]
-    API["Go REST API (chi + pgx/v5)\n(/backend -> Render Docker)"]
-    DB[("PostgreSQL 16/18 + pg_trgm\n(Docker / Neon / Supabase)")]
-
-    FE -->|"REST JSON + Bearer JWT"| API
-    API -->|"pgxpool (FOR UPDATE SKIP LOCKED)"| DB
+    FE["React + TypeScript + Tailwind\n(/frontend)"] -->|"GET /api/homepage, /api/products\nPOST /api/orders/checkout (JWT)"| API["Go REST API (chi + pgx/v5)\n(/backend)"]
+    API -->|"GIN pg_trgm Search\nJSONB Block Hydration\nFOR UPDATE SKIP LOCKED"| DB[("PostgreSQL 16+\n(Docker / Neon / Supabase)")]
 ```
 
-### 1. Go (`net/http` + `chi` + `pgx/v5`) Backend
-- **Clean Layered Structure:** `router` ➔ `handlers` ➔ `services` ➔ `repository` ➔ `pgxpool`.
-- **Typo-Tolerant Search (`pg_trgm`):** `products.title` has a GIN trigram index (`idx_products_title_trgm`). Queries in `GET /api/products?q=...` combine `similarity(title, $1) > 0.15`, `word_similarity($1, title) > 0.25`, and `ILIKE` fallback, ordered by `GREATEST(similarity, word_similarity) DESC` so queries like `q=cybrpunk` accurately rank *Cyberpunk 2077* first.
-- **Dynamic Block-Driven Homepage:** `homepage_blocks` stores ordered CMS blocks (`hero_banner`, `best_sellers`, `flash_deals`, `recommended`) with JSONB `config`. `GET /api/homepage` batches product hydration (lowest price, discount %, live stock) so the React frontend renders zero hardcoded landing-page sections.
-- **Atomic Digital Key Allocation (`FOR UPDATE SKIP LOCKED`):** `POST /api/orders/checkout` executes inside a single `pgx.Tx` transaction:
-  1. Server-side lookup of authoritative `price_cents` from `seller_offers` (client-sent prices are ignored).
-  2. Deterministic lock ordering (cart lines merged and sorted by `seller_offer_id`) to prevent deadlocks.
-  3. `SELECT id, license_key FROM digital_keys WHERE seller_offer_id = $1 AND status = 'AVAILABLE' LIMIT $2 FOR UPDATE SKIP LOCKED` ensures concurrent buyers never lock or receive the same license key.
-  4. On any shortage, the entire transaction rolls back and returns `409 Conflict` identifying the lacking offer and exact available count.
+---
 
-### 2. React + TypeScript + Vite + Tailwind Frontend
-- **Eneba Visual Identity:** Deep violet-indigo canvas (`#1F0A4D`), saturated purple header/cards (`#4618AC` / `#37128A`), vibrant yellow CTAs (`#FFDC00`), and teal/emerald activation key badges (`#00D1B2` / `#19E3B1`).
-- **End-to-End Purchase Flow:**
-  - Persistent `Navbar` with live debounced search suggestions (`SearchBar`), `Cart` badge, and `AccountMenu`.
-  - Dynamic `HomePage` (`/`), URL-synced `StorePage` (`/store`), multi-seller comparison `ProductPage` (`/product/:slug`), `CartPage` (`/cart`), redirect-preserving `AuthPage` (`/login`, `/register`), protected `CheckoutPage` (`/checkout`), `OrderDetailPage` (`/orders/:id`), and `OrdersPage` (`/orders`) with masked/revealable keys and one-click copy.
+## End-to-End Purchase Flow
+
+```text
+[Homepage / Fuzzy Search]
+       |  Dynamic JSONB blocks + pg_trgm typo-tolerant lookup (?q=cybrpunk)
+       v
+[Product & Multi-Seller Comparison]
+       |  Compare seller ratings, stock counts, and prices -> Add to Cart
+       v
+[Cart Review (/cart)]
+       |  Quantity clamped to live offer stock -> Proceed to Checkout
+       v
+[Authentication (/login?redirect=/checkout)]
+       |  Register or Sign In (bcrypt + HS256 JWT) -> Auto-redirect back
+       v
+[Simulated Payment (/checkout)]
+       |  POST /api/orders/checkout -> Atomic DB transaction locks keys
+       v
+[Order Receipt & Key Reveal (/orders/:id & /orders)]
+          Reveal masked key, one-click Copy Key, or revisit Order History
+```
 
 ---
 
-## Scope Decisions, Trade-offs & Shortcuts (7-Day Assignment)
+## Key Engineering Highlights
 
-- **Simulated Payment Gateway:** Checkout uses a `card_sim` payment mode (`Credit / Debit Card (Test Mode)`, `PayPal (Sandbox)`, `Eneba Wallet Demo`) instead of integrating a live Stripe webhook pipeline, allowing reviewers to test full transactional key allocation without real payment credentials.
-- **Single-Currency Display (EUR):** Prices are stored as integer `price_cents` and formatted in EUR (`€`) on the frontend rather than adding multi-currency exchange rate tables.
-- **Static Seeded Seller Catalog:** Seller offers and license keys are seeded via SQL migrations (`001_init.sql`, `002_seed.sql`) rather than building a separate seller onboarding portal/CRUD admin UI.
-- **JWT Access Tokens in `localStorage`:** Short-lived HS256 JWTs (`72h` default) are stored in `localStorage` for simplicity across SPA reloads rather than HTTP-only refresh cookie rotation.
+1. **Typo-Tolerant Catalog Search (`pg_trgm`)**
+   - `products.title` is indexed with a PostgreSQL GIN trigram operator index (`idx_products_title_trgm`).
+   - `GET /api/products?q=...` scores matches using `GREATEST(similarity(p.title, $q), word_similarity($q, p.title))` alongside an `ILIKE` fallback, returning accurate top matches even for partial or misspelled queries (e.g., `q=cybrpunk` ➔ *Cyberpunk 2077*), combined with `platform`, `region`, `min_price`, `max_price`, and `sort` (`popular`, `price_asc`, `price_desc`, `newest`).
+
+2. **Dynamic Block-Driven Homepage (`homepage_blocks` JSONB)**
+   - `homepage_blocks` defines ordered layout sections (`hero_banner`, `best_sellers`, `flash_deals`, `recommended`) with arbitrary JSONB `config`.
+   - `GET /api/homepage` collects all referenced `product_ids`, hydrates live lowest offer price, discount percentage, and total key stock in a single batched CTE query (`GetProductsByIDs`), and preserves exact block ordering so the React frontend contains zero hardcoded product sections.
+
+3. **Concurrency-Safe Digital Key Fulfillment (`FOR UPDATE SKIP LOCKED`)**
+   - `POST /api/orders/checkout` runs inside a single `pgx.Tx` database transaction:
+     - Re-reads authoritative `price_cents` from `seller_offers` on the server (never trusts client-sent totals).
+     - Merges duplicate cart lines and sorts them deterministically by `seller_offer_id` to prevent lock-order deadlocks.
+     - Locks keys via `SELECT id, license_key FROM digital_keys WHERE seller_offer_id = $1 AND status = 'AVAILABLE' LIMIT $2 FOR UPDATE SKIP LOCKED`.
+     - If any line lacks stock, rolls back the entire transaction and returns `409 Conflict` identifying the lacking `seller_offer_id`, `requested`, and `available` counts.
+     - Otherwise inserts `orders` + `order_items`, updates locked keys to `status = 'SOLD'` with `order_item_id` and `sold_at`, and commits.
 
 ---
 
-## Local Development Setup
+## Scope Decisions & Trade-Offs (7-Day Assignment Window)
+
+| Area | Decision & Trade-Off | Rationale |
+| :--- | :--- | :--- |
+| **Payment Processing** | Simulated `card_sim` flow (Card Test Mode, PayPal Sandbox, Eneba Wallet Demo) | Exercises the full atomic reservation, `409` rollback, and key reveal pipeline without external Stripe/webhook setup or real card secrets. |
+| **Seller & Key Inventory** | Seeded via SQL migrations (`002_seed.sql`) + startup artwork/demo sync | Focuses engineering effort on buyer discovery, offer comparison, and concurrency-safe checkout rather than a merchant back-office CRUD portal. |
+| **Pricing & Currency** | Integer `price_cents` displayed in EUR (`€`) | Prevents floating-point rounding bugs while avoiding multi-currency FX conversion tables within the 7-day scope. |
+| **Session Storage** | HS256 JWT stored in `localStorage` (`72h` TTL) | Keeps cross-origin Vercel ➔ Render deployment straightforward without cookie `SameSite` / domain proxying complexity. |
+
+---
+
+## Project Directory Tree
+
+```text
+Eneba Project/
+├── AGENT_LOG.md                   # Complete chronological log of AI-assisted turns
+├── README.md                      # Project documentation & deployment guide
+├── docker-compose.yml             # Local PostgreSQL 16 + auto-migrations
+├── render.yaml                    # Render Blueprint for Go backend
+├── .env.example                   # Root environment template
+├── .gitignore
+├── backend/
+│   ├── Dockerfile                 # Multi-stage static Linux amd64 Go build
+│   ├── go.mod / go.sum
+│   ├── cmd/api/main.go            # Entrypoint, startup seed sync & graceful shutdown
+│   ├── migrations/
+│   │   ├── 001_init.sql           # Extensions (pg_trgm, uuid-ossp), tables & indexes
+│   │   └── 002_seed.sql           # 16 games, 37 seller offers, 111 keys, 4 blocks, demo users
+│   └── internal/
+│       ├── auth/                  # HS256 JWT generation & verification
+│       ├── config/                # Env config loader (ALLOWED_ORIGINS, DATABASE_URL)
+│       ├── db/                    # pgxpool PostgreSQL pool & ping health check
+│       ├── handlers/              # HTTP handlers + integration tests (catalog_test, checkout_test)
+│       ├── middleware/            # JWT Bearer authentication middleware
+│       ├── models/                # Strictly typed domain & API DTO structs
+│       ├── repository/            # SQL queries, pg_trgm search & transactional checkout
+│       ├── router/                # Chi router, CORS & public/protected route groups
+│       └── services/              # Block hydration, auth validation & checkout orchestration
+└── frontend/
+    ├── vercel.json                # SPA rewrite rules for client-side routes
+    ├── .env.example               # Frontend VITE_API_URL template
+    ├── package.json
+    ├── tailwind.config.js         # Eneba violet/yellow/teal theme tokens
+    ├── scripts/run-tests.mjs      # esbuild + Node test harness
+    ├── tests/purchaseFlow.test.mjs
+    └── src/
+        ├── api/                   # Typed fetch client & ApiError handling
+        ├── components/            # Navbar, SearchBar, ProductCard, HeroBanner, PlatformBadge, OrderKeyCard
+        ├── context/               # AuthContext & localStorage-persisted CartContext
+        ├── pages/                 # HomePage, StorePage, ProductPage, CartPage, AuthPage, CheckoutPage, Orders
+        ├── types/                 # TypeScript interfaces matching Go models
+        └── utils/                 # Formatting, redirect sanitization, block parsers & hooks
+```
+
+---
+
+## Local Setup & Automated Test Suite
 
 ### Prerequisites
-- Go `1.22+`
-- Node.js `20+` and `npm` (or `pnpm`)
-- PostgreSQL `16+` (or Docker / Docker Compose)
+- **Go** `1.22+`
+- **Node.js** `20+` and **npm** (or **pnpm**)
+- **PostgreSQL** `16+` (or Docker Compose)
 
-### 1. Database & Environment
-Start PostgreSQL with Docker (auto-runs `backend/migrations/001_init.sql` and `002_seed.sql`):
+### 1. Start PostgreSQL & Migrate
 ```bash
 cp .env.example .env
 docker-compose up -d postgres
 ```
-Or point `DATABASE_URL` in `.env` to a local PostgreSQL / cloud Neon / Supabase instance and run `backend/migrations/001_init.sql` followed by `backend/migrations/002_seed.sql`.
+*(Or point `DATABASE_URL` in `.env` to a local/Neon/Supabase PostgreSQL instance and run `backend/migrations/001_init.sql` then `backend/migrations/002_seed.sql`.)*
 
-### 2. Backend API
+### 2. Run Backend & Integration Tests
+The Go integration suite verifies health checks, dynamic homepage hydration, `pg_trgm` typo search (`q=cybrpunk`), filtering/sorting, multi-seller stock counts, auth, `409 Conflict` rollback, and 8-way concurrent buyer race-condition safety:
 ```bash
 cd backend
+go test -v ./...
 go run ./cmd/api
 ```
-The API listens on `http://localhost:8080` (`GET /api/health` returns `{"status":"ok","database":"connected"}`).
+API listens on `http://localhost:8080`.
 
-### 3. Frontend Storefront
+### 3. Run Frontend & Automated Tests
+The frontend test suite verifies `cartReducer` stock clamping, `CartPage`, unauthenticated redirects on `CheckoutPage` and `OrdersPage`, `OrderKeyCard` reveal/masking, and `OrderDetailPage`:
 ```bash
 cd frontend
 cp .env.example .env
 npm install
-npm run dev
-```
-Open `http://localhost:5173`.
-
----
-
-## Running Automated Tests
-
-### Backend Integration Tests (Go + Live PostgreSQL)
-Covers health check, dynamic homepage blocks, `pg_trgm` typo search, filtering/sorting, product detail & seller stock counts, user registration/login + demo user login, atomic checkout, `409 Conflict` rollback, and 8-way concurrent buyer race-condition safety:
-```bash
-cd backend
-go test -v ./...
-```
-
-### Frontend Tests & Production Build
-Covers cart reducer stock clamping, `CartPage`, unauthenticated redirects on `CheckoutPage` and `OrdersPage`, `OrderKeyCard` mask/reveal behavior, and `OrderDetailPage` receipt rendering:
-```bash
-cd frontend
 npm test
 npm run build
+npm run dev
 ```
+Storefront runs on `http://localhost:5173`.
 
 ---
 
 ## Cloud Deployment (Neon / Supabase + Render + Vercel)
 
-1. **PostgreSQL (Neon or Supabase):**
-   - Create a PostgreSQL database and run `backend/migrations/001_init.sql` and `backend/migrations/002_seed.sql` in its SQL editor.
-   - Copy the pooled/direct connection string with `?sslmode=require`.
-2. **Backend (Render via `render.yaml` + `backend/Dockerfile`):**
-   - Create a New Blueprint or Web Service on Render pointing to this repository (`rootDir: backend`, Docker runtime).
-   - Set `DATABASE_URL` to your Neon/Supabase URI and `ALLOWED_ORIGINS` to your Vercel URL (e.g. `https://eneba-clone.vercel.app,http://localhost:5173`).
-3. **Frontend (Vercel via `frontend/vercel.json`):**
-   - Import the repository in Vercel with **Root Directory** set to `frontend`.
-   - Set environment variable `VITE_API_URL` to your Render service URL (e.g. `https://eneba-marketplace-api.onrender.com`).
-   - `frontend/vercel.json` handles SPA rewrites so refreshes on `/store`, `/product/:slug`, `/checkout`, and `/orders` resolve cleanly.
+1. **PostgreSQL (Neon / Supabase):** Run `backend/migrations/001_init.sql` and `backend/migrations/002_seed.sql`, then copy the connection URI with `?sslmode=require`.
+2. **Backend (Render):** Deploy using `render.yaml` (`rootDir: backend`, Docker runtime). Set `DATABASE_URL` and `ALLOWED_ORIGINS` (your Vercel URL + `http://localhost:5173`).
+3. **Frontend (Vercel):** Import the repo with **Root Directory** set to `frontend`, set `VITE_API_URL` to your Render URL, and deploy (`frontend/vercel.json` handles SPA rewrites).
 
 ---
 
-## AI-Assisted Workflow Log
+## AI-Assisted Workflow
 
-A complete, chronological log of every user prompt, architectural plan, code change, and verification result is maintained in [`AGENT_LOG.md`](./AGENT_LOG.md).
+Every prompt, architectural plan, code change, and test verification across the entire build is recorded chronologically in [**`AGENT_LOG.md`**](./AGENT_LOG.md).

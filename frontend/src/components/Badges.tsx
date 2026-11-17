@@ -1,5 +1,5 @@
 import { Star } from 'lucide-react';
-import { formatCount } from '../lib/format';
+import { formatCount } from '../utils/format';
 
 export { PlatformBadge, PlatformIcon } from './PlatformBadge';
 

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { ProductSummary } from '../types/api';
-import { formatPrice } from '../lib/format';
+import { formatPrice } from '../utils/format';
 import { CoverImage } from './CoverImage';
 import { DiscountPill, PlatformBadge, RegionTag } from './Badges';
 

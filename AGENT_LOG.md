@@ -727,3 +727,48 @@ Verify `go test -v ./...` and `npm run build` both pass with zero errors, and st
 - `go test -v -count=1 ./...`: **11/11 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.547s`), syncing the updated Steam/Nintendo cover URLs in PostgreSQL.
 - `npm test` (frontend): **6/6 tests passed** (`460.98ms`).
 - `npm run build` (`tsc -b && vite build`): exited with code `0` (`1626 modules transformed`, `dist/assets/index-Bgn89CAr.css 36.49 kB`, `dist/assets/index-29mFSXlE.js 280.11 kB`, built in `5.71s`).
+
+
+---
+
+## Turn 11: Repository Audit, Hygiene Cleanup & Executive README
+
+### 1. User Prompt
+```text
+Now let's audit, organize, and polish the entire repository so it looks clean, well-structured, and ready for engineering review on GitHub. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Perform the following repository cleanup and documentation tasks:
+
+1. REPOSITORY HYGIENE & STRUCTURE AUDIT:
+   - Check the root directory, `/backend`, and `/frontend` for any stray temporary files, compiled binaries (e.g., `api.exe`), duplicate `AGENT_LOG.md` copies, or unused boilerplate files, and remove/consolidate them cleanly so there is a single canonical `AGENT_LOG.md` in the root directory.
+   - Verify `.gitignore` properly ignores `.env`, `node_modules/`, `dist/`, compiled Go binaries (`*.exe`, `api`), and OS/IDE artifacts.
+   - Ensure every folder follows clear separation of concerns (`backend/cmd/api`, `backend/internal/{config,db,handlers,middleware,models,repository,router,services}`, `backend/migrations`, and `frontend/src/{api,components,context,pages,types,utils}`).
+
+2. EXECUTIVE-GRADE `README.md`:
+   - Upgrade the root `README.md` with clean formatting, badges, an ASCII/Mermaid architecture diagram, and concise sections covering:
+     - **Live Demo & Reviewer Quick-Start** (placeholders at the top for Live Frontend URL & Backend Health URL, plus the pre-seeded demo account `gamer@eneba-demo.com` / `Password123!`),
+     - **End-to-End Purchase Flow** (`Homepage / Fuzzy Search -> Product & Multi-Seller Comparison -> Cart -> Auth -> Simulated Payment -> Atomic Key Reveal & Order History`),
+     - **Key Engineering Highlights** (PostgreSQL `pg_trgm` trigram similarity search, JSONB block-driven dynamic homepage, and `SELECT ... FOR UPDATE SKIP LOCKED` concurrency-safe digital key fulfillment),
+     - **Scope Decisions & Trade-Offs** (justifying shortcuts and architectural choices within the 7-day window as requested in the assignment brief),
+     - **Project Directory Tree** (clean overview of `/backend` and `/frontend`),
+     - **Local Setup & Automated Test Suite** (`go test -v ./...` and `npm test`),
+     - **AI-Assisted Workflow** (linking directly to `AGENT_LOG.md`).
+
+3. FINAL VERIFICATION:
+   - Run `go test -v ./...`, `npm test`, and `npm run build` one final time to confirm everything passes cleanly after cleanup.
+```
+
+### 2. Summary of Changes
+- **Repository Hygiene & Directory Consolidation**:
+  - Removed the duplicate `AGENT_LOG.md` copy in the parent `Projektai/` directory so `Eneba Project/AGENT_LOG.md` is the single canonical log file at the project root.
+  - Renamed `frontend/src/lib/` to `frontend/src/utils/` and updated all import references across `frontend/src/` and `frontend/scripts/run-tests.mjs` so `frontend/src/` cleanly follows `{api, components, context, pages, types, utils}`.
+  - Removed duplicate `frontend/tailwind.config.cjs`, consolidating Tailwind configuration in `frontend/tailwind.config.js` and updating `frontend/src/index.css` and `frontend/postcss.config.js`.
+  - Updated `frontend/scripts/run-tests.mjs` cleanup to delete `frontend/.vite-temp/` completely after test runs, and removed leftover `.vite-temp` and `tsconfig.tsbuildinfo`.
+  - Tightened `.gitignore` to ignore `.env` / `*.env` (preserving `!.env.example` and `!frontend/.env.example`), `node_modules/`, `dist/`, `.vite-temp/`, `*.tsbuildinfo`, compiled Go binaries (`backend/api`, `backend/bin/`, `*.exe`), and OS/IDE files.
+- **Executive `README.md`**:
+  - Upgraded `README.md` with stack badges, Live Demo & Health URL table, `gamer@eneba-demo.com` / `Password123!` quick-start credentials, ASCII + Mermaid architecture diagrams, end-to-end purchase flow, engineering deep dives (`pg_trgm`, JSONB blocks, `FOR UPDATE SKIP LOCKED`), 7-day scope trade-offs table, directory tree, test/run commands, cloud deployment steps, and link to `AGENT_LOG.md`.
+
+### 3. Final Verification Results
+- `go test -v -count=1 ./...`: **11/11 tests passed** (`ok eneba-marketplace/backend/internal/handlers 2.510s`).
+- `npm test` (frontend): **6/6 tests passed** (`297.46ms`).
+- `npm run build` (`tsc -b && vite build`): exited with code `0` (`1626 modules transformed`, `dist/assets/index-Bgn89CAr.css 36.49 kB`, `dist/assets/index-29mFSXlE.js 280.11 kB`, built in `5.35s`).

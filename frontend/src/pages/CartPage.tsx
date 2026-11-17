@@ -2,8 +2,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Minus, Plus, ShieldCheck, ShoppingCart, Trash2, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { formatPrice } from '../lib/format';
-import { useDocumentTitle } from '../lib/hooks';
+import { formatPrice } from '../utils/format';
+import { useDocumentTitle } from '../utils/hooks';
 import { PlatformBadge, RegionTag } from '../components/Badges';
 import { CoverImage } from '../components/CoverImage';
 

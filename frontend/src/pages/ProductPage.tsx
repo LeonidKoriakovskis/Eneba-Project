@@ -4,8 +4,8 @@ import { Check, ChevronRight, Clock, KeyRound, ShieldCheck, ShoppingCart, Zap } 
 import { api, ApiError, errorMessage } from '../api/client';
 import type { ProductDetail, SellerOffer } from '../types/api';
 import { MAX_QTY_PER_OFFER, useCart, type NewCartItem } from '../context/CartContext';
-import { useDocumentTitle } from '../lib/hooks';
-import { formatCount, formatPrice, formatReleaseDate } from '../lib/format';
+import { useDocumentTitle } from '../utils/hooks';
+import { formatCount, formatPrice, formatReleaseDate } from '../utils/format';
 import { CoverImage } from '../components/CoverImage';
 import { DiscountPill, PlatformBadge, RegionTag, StarRating } from '../components/Badges';
 import { ErrorState } from '../components/ErrorState';

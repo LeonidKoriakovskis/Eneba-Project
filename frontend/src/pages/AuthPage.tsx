@@ -3,8 +3,8 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, KeyRound, Loader2, Lock, Mail, Sparkles, User } from 'lucide-react';
 import { errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { sanitizeRedirect } from '../lib/format';
-import { useDocumentTitle } from '../lib/hooks';
+import { sanitizeRedirect } from '../utils/format';
+import { useDocumentTitle } from '../utils/hooks';
 
 interface AuthPageProps {
   mode: 'login' | 'register';

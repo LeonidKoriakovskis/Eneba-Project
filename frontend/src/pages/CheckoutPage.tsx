@@ -15,8 +15,8 @@ import {
 import { api, ApiError, errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { formatPrice } from '../lib/format';
-import { useDocumentTitle } from '../lib/hooks';
+import { formatPrice } from '../utils/format';
+import { useDocumentTitle } from '../utils/hooks';
 import { PlatformBadge, RegionTag } from '../components/Badges';
 
 type PaymentOptionId = 'card' | 'paypal' | 'wallet';

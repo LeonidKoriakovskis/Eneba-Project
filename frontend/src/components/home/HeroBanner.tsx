@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { HomepageBlock } from '../../types/api';
-import { parseHeroItems, readNumber, readString } from '../../lib/blocks';
-import { formatPrice } from '../../lib/format';
+import { parseHeroItems, readNumber, readString } from '../../utils/blocks';
+import { formatPrice } from '../../utils/format';
 import { CoverImage } from '../CoverImage';
 import { DiscountPill, PlatformBadge, RegionTag } from '../Badges';
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import type { HomepageBlock } from '../../types/api';
-import { readNumber, readString } from '../../lib/blocks';
+import { readNumber, readString } from '../../utils/blocks';
 import { ProductCard } from '../ProductCard';
 
 /** Countdown anchored per-session so it doesn't reset on every navigation. */

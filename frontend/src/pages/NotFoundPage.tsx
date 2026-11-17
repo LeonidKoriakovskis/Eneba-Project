@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Ghost } from 'lucide-react';
-import { useDocumentTitle } from '../lib/hooks';
+import { useDocumentTitle } from '../utils/hooks';
 
 export default function NotFoundPage({ message = "This page doesn't exist." }: { message?: string }) {
   useDocumentTitle('Not found');

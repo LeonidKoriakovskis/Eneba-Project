@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Copy, Eye, EyeOff, Info, KeyRound } from 'lucide-react';
 import type { OrderItem } from '../../types/api';
-import { formatPrice } from '../../lib/format';
+import { formatPrice } from '../../utils/format';
 import { PlatformBadge, RegionTag } from '../Badges';
 
 const REDEMPTION_GUIDE: Record<string, string> = {

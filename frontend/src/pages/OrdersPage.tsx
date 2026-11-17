@@ -4,8 +4,8 @@ import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, KeyRound, Package 
 import { api, errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import type { Order } from '../types/api';
-import { formatDateTime, formatPrice } from '../lib/format';
-import { useDocumentTitle } from '../lib/hooks';
+import { formatDateTime, formatPrice } from '../utils/format';
+import { useDocumentTitle } from '../utils/hooks';
 import { ErrorState } from '../components/ErrorState';
 import { OrderKeyCard } from '../components/orders/OrderKeyCard';
 

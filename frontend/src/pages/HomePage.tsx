@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorMessage } from '../api/client';
 import type { HomepageBlock } from '../types/api';
-import { useDocumentTitle } from '../lib/hooks';
+import { useDocumentTitle } from '../utils/hooks';
 import { ErrorState } from '../components/ErrorState';
 import { ProductCardSkeleton } from '../components/ProductCard';
 import { HeroBanner } from '../components/home/HeroBanner';

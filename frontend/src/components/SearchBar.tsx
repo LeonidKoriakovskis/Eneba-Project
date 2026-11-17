@@ -3,8 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, Search, X } from 'lucide-react';
 import { api } from '../api/client';
 import type { ProductSummary } from '../types/api';
-import { useDebouncedValue } from '../lib/hooks';
-import { formatPrice } from '../lib/format';
+import { useDebouncedValue } from '../utils/hooks';
+import { formatPrice } from '../utils/format';
 import { CoverImage } from './CoverImage';
 import { PlatformBadge, RegionTag } from './Badges';
 
