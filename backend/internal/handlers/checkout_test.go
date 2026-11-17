@@ -468,6 +468,11 @@ func TestStripe_ConfigSessionAndIdempotentFulfillment(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodPost && r.URL.Path == "/v1/checkout/sessions" {
 			_ = r.ParseForm()
+			if r.Form.Has("payment_method_types[0]") || r.Form.Has("payment_method_types") {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":{"message":"The payment_method_types parameter is no longer supported when creating a Checkout Session."}}`))
+				return
+			}
 			if r.FormValue("mode") != "payment" || !strings.Contains(r.FormValue("success_url"), "session_id={CHECKOUT_SESSION_ID}") {
 				w.WriteHeader(http.StatusBadRequest)
 				_, _ = w.Write([]byte(`{"error":{"message":"invalid session payload"}}`))

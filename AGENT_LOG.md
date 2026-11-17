@@ -1143,3 +1143,26 @@ Let's implement two final production-grade upgrades in one pass: (A) real Stripe
 - `go build ./cmd/api` (`Eneba Project/backend`): compiled with exit code `0`.
 - `npm --prefix "Eneba Project/frontend" test`: **14/14 tests passed** (`258.38ms`).
 - `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1631 modules transformed`, `dist/assets/index-Md3-ZtLF.css 44.64 kB`, `dist/assets/index-D0DZAj4O.js 315.25 kB`, built in `4.57s`).
+
+
+---
+
+## Turn 21: Fix Stripe Checkout Session Creation (`payment_method_types` Removal)
+
+### 1. User Prompt
+```text
+In `backend/internal/handlers/stripe.go` (or wherever `POST /api/checkout/stripe-session` builds the Stripe Checkout Session parameters), Stripe's newer API version rejects `payment_method_types` with: `The payment_method_types parameter is no longer supported when creating a Checkout Session.` Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Fix the Stripe Checkout Session creation in the Go backend:
+- Remove `PaymentMethodTypes` (`payment_method_types`) from the `CheckoutSessionParams` struct so Stripe uses your Dashboard's enabled payment methods automatically.
+- Run `go test -v ./...` to confirm everything compiles and passes cleanly.
+```
+
+### 2. Summary of Changes
+1. **`backend/internal/services/stripe.go`**:
+   - Removed `form.Set("payment_method_types[0]", "card")` from `StripeService.CreateCheckoutSession` so Stripe automatically applies the payment methods enabled in the Stripe Dashboard without triggering newer API version validation errors.
+2. **`backend/internal/handlers/checkout_test.go`**:
+   - Updated the mock Stripe REST server inside `TestStripe_ConfigSessionAndIdempotentFulfillment` to reject requests containing `payment_method_types` or `payment_method_types[0]` with `400 Bad Request` matching Stripe's live validation behavior.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **14/14 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.697s`).

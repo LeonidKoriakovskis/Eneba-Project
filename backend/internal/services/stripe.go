@@ -73,7 +73,6 @@ func (s *StripeService) CreateCheckoutSession(ctx context.Context, lines []model
 
 	form := url.Values{}
 	form.Set("mode", "payment")
-	form.Set("payment_method_types[0]", "card")
 	form.Set("success_url", s.frontendURL+"/checkout/success?session_id={CHECKOUT_SESSION_ID}")
 	form.Set("cancel_url", s.frontendURL+"/checkout?canceled=1")
 	form.Set("client_reference_id", userID)
