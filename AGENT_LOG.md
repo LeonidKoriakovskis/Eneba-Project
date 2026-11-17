@@ -178,3 +178,135 @@ can we create the database here
 ### 3. Summary of Changes
 - Generated `Eneba Project/.env` preconfigured for PostgreSQL 18 running on port 5432.
 - Documented exact step-by-step instructions for running migrations via pgAdmin 4 Query Tool.
+
+
+---
+
+## Turn 3: Implementation of Read-Side REST API & Automated Verification
+
+### 1. User Prompt
+```text
+Great—the PostgreSQL database `eneba_marketplace` is created, migrated (`001_init.sql`), seeded (`002_seed.sql`), and `.env` is configured. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Now let's implement the read-side Go REST API endpoints with clean architecture (handlers -> services/repositories -> PostgreSQL via `pgx/v5`), CORS middleware for the React frontend, and automated tests:
+
+1. `GET /api/health`: Verify PostgreSQL connection ping and return JSON `{ "status": "ok", "database": "connected" }`.
+2. `GET /api/homepage`:
+   - Fetch active blocks from `homepage_blocks` ordered by `sort_order ASC`.
+   - Hydrate each block dynamically from the database (e.g., resolving referenced `product_ids` from `config` JSONB along with each product's lowest available `seller_offers` price and available key count) so the React frontend can render every block purely from the API response with zero hardcoded data.
+3. `GET /api/products`:
+   - Support query parameters:
+     - `q`: Typo-tolerant and partial name search using PostgreSQL `pg_trgm` (`similarity(title, $1) > 0.2` OR `title ILIKE '%' || $1 || '%'`) ordered by similarity relevance when `q` is present.
+     - `platform`: Filter by platform (e.g., `Steam`, `PSN`, `Xbox`, `Nintendo`).
+     - `region`: Filter by region (e.g., `GLOBAL`, `EUROPE`, `US`).
+     - `min_price` and `max_price` (in cents): Filter based on the product's lowest available seller offer price.
+     - `sort`: Support `price_asc`, `price_desc`, `newest`, and `popular` (default).
+   - Return each product with its lowest available offer price, discount percentage (if `original_price_cents` is set), and total available stock count across sellers.
+4. `GET /api/products/{slug}`:
+   - Return full product details plus all associated `seller_offers` sorted by `price_cents ASC`, including each offer's real-time count of `'AVAILABLE'` keys in `digital_keys` so out-of-stock offers are clearly flagged.
+5. Testing & Verification:
+   - Write Go integration/handler tests (`internal/handlers/catalog_test.go`) testing:
+     - `GET /api/homepage` returns ordered hydrated blocks.
+     - `GET /api/products?q=cybrpunk` (intentional typo) successfully returns *Cyberpunk 2077* via `pg_trgm`.
+     - Filtering by `platform` and `region` + sorting by `price_asc` works accurately.
+     - `GET /api/products/{slug}` returns multiple seller offers ordered by price with accurate available key counts.
+   - Run `go test ./...` and confirm all tests pass.
+
+After finishing and verifying `go test ./...`, stop so I can review the API responses before we build authentication and transactional checkout.
+```
+
+### 2. Architectural Plan
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as HTTP Client (Frontend / Test)
+    participant Router as Chi Router (/api)
+    participant Handler as CatalogHandler
+    participant Service as CatalogService
+    participant Repo as CatalogRepository
+    participant DB as PostgreSQL (pgxpool)
+
+    Note over Client, DB: Example: GET /api/homepage (Dynamic Block-Driven Hydration)
+    Client->>Router: GET /api/homepage
+    Router->>Handler: HandleGetHomepage(w, r)
+    Handler->>Service: GetHomepage(ctx)
+    Service->>Repo: GetActiveHomepageBlocks(ctx)
+    Repo->>DB: SELECT ... FROM homepage_blocks WHERE is_active = true ORDER BY sort_order ASC
+    DB-->>Repo: 4 Blocks (hero_banner, best_sellers, flash_deals, recommended)
+    Note over Service: Collects all product_ids from block configs
+    Service->>Repo: GetProductsByIDs(ctx, allIDs)
+    Repo->>DB: Batch SELECT with offer_stats & best_offer CTEs
+    DB-->>Repo: Map of ProductSummaries (lowest price, stock, ratings)
+    Note over Service: Hydrates each block preserving config order
+    Service-->>Handler: []HydratedHomepageBlock
+    Handler-->>Client: 200 OK JSON {"blocks": [...]}
+```
+
+#### Layer Responsibilities:
+1. **Repository Layer (`internal/repository/catalog.go`)**:
+   - `GetActiveHomepageBlocks`: Reads active layout blocks ordered by `sort_order ASC`.
+   - `GetProductsByIDs`: Efficiently batch queries product catalog summaries with CTEs computing `lowest_price_cents`, `best_offer`, discount percentage, and total stock count across sellers.
+   - `ListProducts`: Multi-faceted filtering (`q` via `pg_trgm`, `platform`, `region`, `genre`, `min_price`, `max_price`) and sorting (`price_asc`, `price_desc`, `newest`, `popular`).
+   - `GetProductBySlug`: Reads complete product metadata and all active seller offers sorted by `price_cents ASC`, including live `available_keys_count` filtered on `digital_keys.status = 'AVAILABLE'`.
+2. **Service Layer (`internal/services/catalog.go`)**:
+   - Coordinates multi-entity business logic and block hydration.
+   - Parses arbitrary JSONB block configurations, extracts product IDs across formats (arrays and banner carousels), and enriches items with live pricing and stock.
+3. **Handler Layer (`internal/handlers/catalog.go` & `health.go`)**:
+   - `GET /api/health`: Verifies live DB ping latency and returns `{"status": "ok", "database": "connected"}`.
+   - `GET /api/homepage`: Returns hydrated blocks.
+   - `GET /api/products`: Validates query parameters and returns paginated products.
+   - `GET /api/products/{slug}`: Returns full product detail or 404.
+
+---
+
+### 3. Summary of Changes & Implementation
+
+1. **Database Seed Fix & Population**:
+   - Fixed foreign key UUID typo in `backend/migrations/002_seed.sql` for Game 12 offer.
+   - Seeded database `eneba_marketplace` with 16 products, 37 seller offers, 111 available license keys, and 4 dynamic homepage blocks.
+2. **Models & Domain Structs (`internal/models/models.go`)**:
+   - Defined `ProductSummary`, `ProductDetail`, `SellerOfferWithStock`, `HydratedHomepageBlock`, `ProductFilterParams`, and `ProductListResponse`.
+3. **Repository (`internal/repository/catalog.go`)**:
+   - Implemented `GetActiveHomepageBlocks`, `GetProductsByIDs`, `ListProducts`, and `GetProductBySlug`.
+   - Integrated PostgreSQL `pg_trgm` scoring: `GREATEST(similarity(p.title, $q), word_similarity($q, p.title))` with fallback to `ILIKE`.
+4. **Service (`internal/services/catalog.go`)**:
+   - Implemented dynamic block hydration that merges CMS block layout with real-time product pricing and stock.
+5. **Handlers & Routing (`internal/handlers/` & `cmd/api/main.go`)**:
+   - Wired handlers to Chi router with CORS, logger, and panic recoverer middlewares.
+6. **Automated Integration Tests (`internal/handlers/catalog_test.go`)**:
+   - `TestHealthEndpoint`: Asserts `200 OK` and `{"status": "ok", "database": "connected"}`.
+   - `TestHomepageEndpoint_HydratedBlocks`: Asserts 4 ordered blocks with populated `products` containing lowest price and stock.
+   - `TestProductsEndpoint_TypoTolerantSearch`: Verifies `q=cybrpunk` resolves to *Cyberpunk 2077* via `pg_trgm`.
+   - `TestProductsEndpoint_FilterAndSort`: Validates `platform=Steam`, `region=GLOBAL`, and `price_asc` sorting.
+   - `TestProductBySlugEndpoint_DetailAndOffers`: Verifies multi-seller offers sorted by price with accurate stock counts.
+   - `TestProductBySlugEndpoint_NotFound`: Verifies 404 for nonexistent slugs.
+
+#### Test Execution Result:
+```
+=== RUN   TestHealthEndpoint
+--- PASS: TestHealthEndpoint (0.12s)
+=== RUN   TestHomepageEndpoint_HydratedBlocks
+--- PASS: TestHomepageEndpoint_HydratedBlocks (0.10s)
+=== RUN   TestProductsEndpoint_TypoTolerantSearch
+--- PASS: TestProductsEndpoint_TypoTolerantSearch (0.11s)
+=== RUN   TestProductsEndpoint_FilterAndSort
+--- PASS: TestProductsEndpoint_FilterAndSort (0.10s)
+=== RUN   TestProductBySlugEndpoint_DetailAndOffers
+--- PASS: TestProductBySlugEndpoint_DetailAndOffers (0.10s)
+=== RUN   TestProductBySlugEndpoint_NotFound
+--- PASS: TestProductBySlugEndpoint_NotFound (0.11s)
+PASS
+ok  	eneba-marketplace/backend/internal/handlers	0.824s
+```
+
+---
+
+### 4. Next Steps for Step 3
+1. Implement User Authentication:
+   - Registration (`POST /api/auth/register`) with bcrypt hashing.
+   - Login (`POST /api/auth/login`) issuing signed JWT tokens.
+   - Auth middleware for authenticated requests (`/api/auth/me`, `/api/orders`).
+2. Implement Transactional Checkout:
+   - Atomic digital key assignment (`SELECT ... FOR UPDATE SKIP LOCKED`).
+   - Order creation and inventory fulfillment.

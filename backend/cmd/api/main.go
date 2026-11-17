@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -13,6 +12,9 @@ import (
 
 	"eneba-marketplace/backend/internal/config"
 	"eneba-marketplace/backend/internal/db"
+	"eneba-marketplace/backend/internal/handlers"
+	"eneba-marketplace/backend/internal/repository"
+	"eneba-marketplace/backend/internal/services"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,29 +22,44 @@ import (
 )
 
 type Server struct {
-	cfg *config.Config
-	db  *db.Database
+	cfg            *config.Config
+	db             *db.Database
+	catalogHandler *handlers.CatalogHandler
+	healthHandler  *handlers.HealthHandler
 }
 
 func main() {
 	cfg := config.Load()
 	log.Printf("Starting Eneba Marketplace Backend [Env: %s, Port: %s]...", cfg.Environment, cfg.Port)
 
-	// Attempt connecting to database with a timeout
+	// Attempt connecting to database
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	database, err := db.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Printf("⚠️ Warning: Initial database connection failed: %v", err)
-		log.Printf("Server will continue running in degraded mode. Start PostgreSQL or configure DATABASE_URL.")
 	} else {
 		defer database.Close()
 	}
 
+	var catalogHandler *handlers.CatalogHandler
+	var healthHandler *handlers.HealthHandler
+
+	if database != nil && database.Pool != nil {
+		catalogRepo := repository.NewCatalogRepository(database.Pool)
+		catalogService := services.NewCatalogService(catalogRepo)
+		catalogHandler = handlers.NewCatalogHandler(catalogService)
+		healthHandler = handlers.NewHealthHandler(database)
+	} else {
+		healthHandler = handlers.NewHealthHandler(nil)
+	}
+
 	srv := &Server{
-		cfg: cfg,
-		db:  database,
+		cfg:            cfg,
+		db:             database,
+		catalogHandler: catalogHandler,
+		healthHandler:  healthHandler,
 	}
 
 	router := srv.setupRouter()
@@ -111,66 +128,16 @@ func (s *Server) setupRouter() *chi.Mux {
 		MaxAge:           300,
 	}))
 
-	// Health Check Endpoint
-	r.Get("/api/health", s.handleHealthCheck)
+	// API Routes
+	r.Route("/api", func(r chi.Router) {
+		r.Get("/health", s.healthHandler.HandleHealth)
+
+		if s.catalogHandler != nil {
+			r.Get("/homepage", s.catalogHandler.HandleGetHomepage)
+			r.Get("/products", s.catalogHandler.HandleListProducts)
+			r.Get("/products/{slug}", s.catalogHandler.HandleGetProductBySlug)
+		}
+	})
 
 	return r
-}
-
-type HealthResponse struct {
-	Status    string            `json:"status"`
-	Service   string            `json:"service"`
-	Timestamp string            `json:"timestamp"`
-	Database  DatabaseHealth    `json:"database"`
-	Details   map[string]string `json:"details,omitempty"`
-}
-
-type DatabaseHealth struct {
-	Connected   bool   `json:"connected"`
-	LatencyMs   int64  `json:"latency_ms,omitempty"`
-	Message     string `json:"message"`
-}
-
-func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	dbHealth := DatabaseHealth{
-		Connected: false,
-		Message:   "Database not configured or disconnected",
-	}
-
-	overallStatus := "ok"
-
-	if s.db != nil && s.db.Pool != nil {
-		start := time.Now()
-		pingCtx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-		defer cancel()
-
-		if err := s.db.Ping(pingCtx); err != nil {
-			dbHealth.Connected = false
-			dbHealth.Message = err.Error()
-			overallStatus = "degraded"
-		} else {
-			dbHealth.Connected = true
-			dbHealth.LatencyMs = time.Since(start).Milliseconds()
-			dbHealth.Message = "PostgreSQL pool connected and responsive"
-		}
-	} else {
-		overallStatus = "degraded"
-	}
-
-	response := HealthResponse{
-		Status:    overallStatus,
-		Service:   "eneba-marketplace-api",
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Database:  dbHealth,
-	}
-
-	if overallStatus == "ok" {
-		w.WriteHeader(http.StatusOK)
-	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}
-
-	_ = json.NewEncoder(w).Encode(response)
 }

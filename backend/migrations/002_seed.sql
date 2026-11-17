@@ -250,7 +250,7 @@ INSERT INTO seller_offers (id, product_id, seller_name, seller_rating, review_co
 
 -- Offers for Game 12 (Marvel's Spider-Man)
 INSERT INTO seller_offers (id, product_id, seller_name, seller_rating, review_count, price_cents, original_price_cents, is_featured) VALUES
-('20000012-0000-0000-0000-000000000012', '11111111-0000-0000-0000-000000000012', 'NexusGaming', 4.96, 1780, 3199, 5999, true),
+('20000012-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000012', 'NexusGaming', 4.96, 1780, 3199, 5999, true),
 ('20000012-0000-0000-0000-000000000002', '11111111-0000-0000-0000-000000000012', 'KeyMaster EU', 4.89, 740, 3350, 5999, false);
 
 -- Offers for Game 13 (Resident Evil 4 Remake)
