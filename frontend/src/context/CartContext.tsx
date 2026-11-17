@@ -21,7 +21,7 @@ export interface CartItem {
 
 export type NewCartItem = Omit<CartItem, 'quantity'>;
 
-type Action =
+export type CartAction =
   | { type: 'add'; item: NewCartItem; quantity: number }
   | { type: 'setQuantity'; sellerOfferId: string; quantity: number }
   | { type: 'remove'; sellerOfferId: string }
@@ -31,7 +31,7 @@ function clamp(qty: number, max: number): number {
   return Math.max(1, Math.min(qty, max, MAX_QTY_PER_OFFER));
 }
 
-function reducer(state: CartItem[], action: Action): CartItem[] {
+export function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
   switch (action.type) {
     case 'add': {
       const max = Math.max(1, Math.min(action.item.maxQuantity, MAX_QTY_PER_OFFER));
@@ -92,7 +92,7 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, dispatch] = useReducer(reducer, undefined, loadStored);
+  const [items, dispatch] = useReducer(cartReducer, undefined, loadStored);
 
   useEffect(() => {
     try {

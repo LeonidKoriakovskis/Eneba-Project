@@ -521,3 +521,82 @@ Inspect `frontend/src/index.css` and `frontend/tailwind.config.js` (or `.ts`). E
 ### 4. Verification Results
 - `npm run build` (`tsc -b && vite build`) exited with code 0 (`dist/assets/index-DptZW4Vk.css 31.45 kB`, `dist/assets/index-CUb_1N7u.js 229.94 kB`, built in 3.89s).
 - `curl.exe -s -i http://localhost:5173/src/index.css` returned `HTTP/1.1 200 OK` with compiled `.btn-yellow` and `.btn-outline` rules using `rgb(31 10 77 ...)` for `text-eneba-ink` and `rgb(255 220 0 ...)` for `bg-eneba-yellow`.
+
+
+---
+
+## Turn 7: End-to-End Purchase Flow — Cart, Auth, Checkout, Key Reveal & Order History
+
+### 1. User Prompt
+```text
+Now let's complete the end-to-end purchase and authentication flow in the React + TypeScript frontend so a buyer can seamlessly move from Product Page -> Cart -> Checkout (sign-in required) -> Simulated Payment -> Order & Digital Key Reveal -> Order History. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Implement the following pages, modals, and flows matching our Eneba design system (`#1F0A4D` / `#4618AC` violet palette, `#FFDC00` yellow CTAs, `#00D1B2` teal/emerald key badges):
+
+1. CART PAGE / DRAWER (`/cart`):
+   - Display all added seller offers with game cover thumbnail, title, platform & region tags, selected seller name, unit price, quantity controls (`-` / `+` capped at available stock), and remove button.
+   - Show order subtotal, simulated service fee (`€0.00` or transparent breakdown), and a prominent yellow `Proceed to Checkout` button.
+   - Include a clear empty-cart state with a CTA linking back to `/store`.
+
+2. AUTHENTICATION (`/login` & `/register` + Redirect Preservation):
+   - Clean Eneba-styled Sign In and Create Account views (with easy toggle between Login and Register).
+   - Connect to `POST /api/auth/login` and `POST /api/auth/register`, storing the JWT token and user info in `AuthContext` (`localStorage`).
+   - Support a `redirect` query parameter (e.g., `/login?redirect=/checkout`) so if an unauthenticated visitor clicks `Proceed to Checkout`, they are directed to sign in/register and automatically sent right back to `/checkout` afterward.
+
+3. PROTECTED CHECKOUT & SIMULATED PAYMENT (`/checkout`):
+   - Protected route: if not signed in, redirect immediately to `/login?redirect=/checkout`.
+   - Two-column Eneba checkout layout:
+     - Left column: Simulated Payment Method selector (e.g., "Credit / Debit Card (Test Mode)", "PayPal (Sandbox)", "Eneba Wallet Demo") with realistic mock card/account preview and a **"Test Mode — No Real Money Charged"** badge.
+     - Right column: Order summary showing exact items, sellers, quantities, total price, and a yellow `Pay €XX.XX & Reveal Keys` button.
+   - Clicking Pay sends `POST /api/orders/checkout` with the JWT `Authorization: Bearer` header:
+     - Handle loading spinner state during payment processing.
+     - Handle `409 Conflict` (out-of-stock race condition) gracefully with a clear error banner explaining which seller offer ran out of stock so the user can adjust their cart.
+     - On `201 Created`, clear the cart and navigate to the **Order & Key Confirmation Screen** (`/orders/:id` or `/checkout/success` passing the order data).
+
+4. ORDER & DIGITAL KEY REVEAL + ORDER HISTORY (`/orders` & `/orders/:id`):
+   - **Order & Key Screen:** Celebration confirmation header ("Payment Successful — Your Digital Keys Are Ready!"), order number, timestamp, total paid, and a card for each purchased game displaying:
+     - Game title, platform, region, and seller name,
+     - A click-to-reveal or blurred-by-default digital key box (`XXXX-YYYY-ZZZZ`) with a one-click **Copy Key** button (`Copied!` toast/badge feedback) and quick platform redemption instructions.
+   - **My Orders History Page (`/orders`):** Protected route fetching `GET /api/orders`, listing all past orders newest-first with expandable/visible digital keys and copy buttons so users can always retrieve previously purchased keys.
+
+5. VERIFICATION & POLISH:
+   - Write frontend component/integration tests (using Vitest / React Testing Library if configured, or add lightweight tests) verifying cart updates, checkout auth redirect, and key copy/reveal rendering.
+   - Run `npm run build` and verify zero TypeScript or bundling errors.
+
+Stop after verifying `npm run build` passes so I can test the entire purchase flow end-to-end in the browser.
+```
+
+### 2. Architectural Plan
+
+```mermaid
+flowchart LR
+    P["ProductPage (/product/:slug)"] -->|"Add to Cart / Buy Now"| C["CartPage (/cart)"]
+    C -->|"Authenticated"| CK["CheckoutPage (/checkout)"]
+    C -->|"Unauthenticated"| L["AuthPage (/login?redirect=/checkout)"]
+    L <-->|"Preserves ?redirect="| R["AuthPage (/register?redirect=/checkout)"]
+    L -->|"POST /api/auth/login"| CK
+    R -->|"POST /api/auth/register"| CK
+    CK -->|"POST /api/orders/checkout (409 Conflict)"| CK
+    CK -->|"201 Created -> clear cart"| OD["OrderDetailPage (/orders/:id)"]
+    OD -->|"View Order History"| OH["OrdersPage (/orders)"]
+```
+
+### 3. Summary of Changes
+- **Helpers & State**:
+  - Updated `frontend/src/lib/format.ts` with `formatDateTime` and `sanitizeRedirect` (prevents open-redirect URLs while keeping relative redirects).
+  - Exported `cartReducer` and `CartAction` in `frontend/src/context/CartContext.tsx`.
+- **Pages & Components**:
+  - Created `frontend/src/pages/CartPage.tsx`: Empty-cart view, item cards with cover thumbnails, platform/region tags, seller info, `-` / `+` quantity buttons capped at `maxQuantity`, remove/clear controls, and order summary with `Proceed to Checkout`.
+  - Created `frontend/src/pages/AuthPage.tsx`: Unified Sign In (`/login`) and Create Account (`/register`) views preserving `?redirect=`, inline error display, authenticated redirect, and one-click Demo Buyer quick-fill (`gamer@eneba-demo.com`).
+  - Created `frontend/src/pages/CheckoutPage.tsx`: Auth-protected `/checkout` route with `Test Mode — No Real Money Charged` badge, simulated payment methods (Card, PayPal Sandbox, Eneba Wallet Demo), loading spinner during `POST /api/orders/checkout`, graceful `409 Conflict` stock adjustment/removal banner, and redirect to `/orders/:id` on `201 Created`.
+  - Created `frontend/src/components/orders/OrderKeyCard.tsx`: Digital key reveal/mask box (`••••-••••-••••` vs revealed `XXXX-YYYY-ZZZZ`), one-click **Copy Key** (`Copied!` badge feedback), and platform redemption instructions.
+  - Created `frontend/src/pages/OrderDetailPage.tsx`: Confirmation receipt screen (`/orders/:id` and `/checkout/success`) with "Reveal All Keys" toggle, cached/fetched order resolution, and `OrderKeyCard` list.
+  - Created `frontend/src/pages/OrdersPage.tsx`: Protected `/orders` history page fetching `GET /api/orders` newest-first with collapsible order sections and key reveal/copy cards.
+  - Updated `frontend/src/App.tsx` to wire `/cart`, `/login`, `/register`, `/checkout`, `/checkout/success`, `/orders`, and `/orders/:id`, and removed `ComingSoonPage.tsx`.
+- **Automated Frontend Tests**:
+  - Created `frontend/scripts/run-tests.mjs` and `frontend/tests/purchaseFlow.test.mjs` using `esbuild`, `node:test`, and `react-dom/server` (`"test": "node ./scripts/run-tests.mjs"` in `frontend/package.json`).
+
+### 4. Verification Results
+- `npm test` (`frontend/tests/purchaseFlow.test.mjs`): **6/6 tests passed** (`cartReducer` clamping/merge/removal, `CartPage` empty & populated totals, `CheckoutPage`/`OrdersPage` unauthenticated redirect to `/login?redirect=...` + `sanitizeRedirect`, authenticated `CheckoutPage` & `AuthPage` redirect, `OrderKeyCard` masked vs revealed key + Steam instructions, and `OrderDetailPage` receipt rendering).
+- `npm run build` (`tsc -b && vite build`): **exited with code 0** (`dist/assets/index-CMXm2w-v.css 35.95 kB`, `dist/assets/index-CPIXWvWv.js 272.15 kB`, built in 3.83s).
+- Verified live Go backend on port `8080` (`auth_status:401` on `POST /api/auth/login`) and live Vite dev server on port `5173` (`vite_index:200`, serving all updated routes in `src/App.tsx`).

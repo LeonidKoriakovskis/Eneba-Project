@@ -10,6 +10,28 @@ export function formatReleaseDate(isoDate: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+export function formatDateTime(isoString: string): string {
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return isoString;
+  return d.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Rejects open-redirect schemes or protocol-relative URLs; allows safe in-app relative paths. */
+export function sanitizeRedirect(raw: string | null | undefined, fallback = '/'): string {
+  if (!raw) return fallback;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('\\')) {
+    return fallback;
+  }
+  return trimmed;
+}
+
 export function formatCount(n: number): string {
   return new Intl.NumberFormat('en-US').format(n);
 }
