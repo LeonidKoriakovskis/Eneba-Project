@@ -131,7 +131,17 @@ export interface CheckoutItemRequest {
 
 export interface CheckoutRequest {
   items: CheckoutItemRequest[];
-  payment_method: 'card_sim';
+  payment_method: 'card_sim' | 'stripe_test';
+  stripe_session_id?: string;
+}
+
+export interface PaymentConfigResponse {
+  stripe_enabled: boolean;
+}
+
+export interface StripeSessionResponse {
+  url: string;
+  session_id: string;
 }
 
 export interface OrderItem {

@@ -185,8 +185,33 @@ type CheckoutItem struct {
 }
 
 type CheckoutRequest struct {
-	Items         []CheckoutItem `json:"items"`
-	PaymentMethod string         `json:"payment_method"`
+	Items           []CheckoutItem `json:"items"`
+	PaymentMethod   string         `json:"payment_method"`
+	StripeSessionID string         `json:"stripe_session_id,omitempty"`
+}
+
+// CheckoutLinePreview holds authoritative DB pricing and product details for Stripe checkout.
+type CheckoutLinePreview struct {
+	SellerOfferID  string `json:"seller_offer_id"`
+	ProductID      string `json:"product_id"`
+	ProductTitle   string `json:"product_title"`
+	ProductSlug    string `json:"product_slug"`
+	Platform       string `json:"platform"`
+	Region         string `json:"region"`
+	SellerName     string `json:"seller_name"`
+	UnitPriceCents int    `json:"unit_price_cents"`
+	Quantity       int    `json:"quantity"`
+}
+
+// PaymentConfigResponse reports whether Stripe Checkout (Test Mode) is enabled on the server.
+type PaymentConfigResponse struct {
+	StripeEnabled bool `json:"stripe_enabled"`
+}
+
+// StripeSessionResponse is returned by POST /api/checkout/stripe-session.
+type StripeSessionResponse struct {
+	URL       string `json:"url"`
+	SessionID string `json:"session_id"`
 }
 
 // OrderItemDetail is one purchased unit including its revealed license key.

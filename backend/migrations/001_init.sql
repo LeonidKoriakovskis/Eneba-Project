@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS orders (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     total_cents INT NOT NULL CHECK (total_cents >= 0),
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELLED', 'REFUNDED')),
+    stripe_session_id TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

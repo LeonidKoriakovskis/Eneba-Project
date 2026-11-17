@@ -43,9 +43,19 @@ func main() {
 	if database != nil && database.Pool != nil {
 		pool := database.Pool
 
+		userRepo := repository.NewUserRepository(pool)
+		orderRepo := repository.NewOrderRepository(pool)
+
+		if err := orderRepo.EnsureSchema(ctx); err != nil {
+			log.Printf("⚠️ Warning: Failed to ensure order schema updates: %v", err)
+		}
+
+		stripeService := services.NewStripeService(cfg.StripeSecretKey, cfg.FrontendURL)
+		emailService := services.NewEmailService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.FrontendURL)
+
 		catalogService := services.NewCatalogService(repository.NewCatalogRepository(pool))
-		authService := services.NewAuthService(repository.NewUserRepository(pool), tokens)
-		orderService := services.NewOrderService(repository.NewOrderRepository(pool))
+		authService := services.NewAuthService(userRepo, tokens)
+		orderService := services.NewOrderService(orderRepo, stripeService)
 
 		if err := authService.EnsureDemoUsers(ctx); err != nil {
 			log.Printf("⚠️ Warning: Failed to seed demo users: %v", err)
@@ -55,8 +65,9 @@ func main() {
 		}
 
 		deps.Catalog = handlers.NewCatalogHandler(catalogService)
-		deps.Auth = handlers.NewAuthHandler(authService)
-		deps.Orders = handlers.NewOrderHandler(orderService)
+		deps.Auth = handlers.NewAuthHandler(authService, emailService)
+		deps.Orders = handlers.NewOrderHandler(orderService, userRepo, emailService)
+		deps.Stripe = handlers.NewStripeHandler(stripeService, orderService)
 	}
 
 	httpServer := &http.Server{

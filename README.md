@@ -99,7 +99,8 @@ graph LR
 
 | Area | Decision & Trade-Off | Rationale |
 | :--- | :--- | :--- |
-| **Payment Processing** | Simulated `card_sim` flow (Card Test Mode, PayPal Sandbox, Eneba Wallet Demo) | Exercises the full atomic reservation, `409` rollback, and key reveal pipeline without external Stripe/webhook setup or real card secrets. |
+| **Payment Processing** | Hosted Stripe Checkout (Test Mode via `STRIPE_SECRET_KEY`) + automatic `card_sim` fallback | Uses server-verified EUR pricing and idempotent `stripe_session_id` fulfillment when configured, while staying runnable offline with zero external keys via the built-in sandbox simulator. |
+| **Transactional Emails** | Async HTML welcome & key-delivery emails via Resend (`RESEND_API_KEY`) + `[EMAIL PREVIEW]` stdout logs | Dispatches non-blocking Eneba-styled HTML receipts on registration and order completion without delaying checkout or failing tests when no API key is set. |
 | **Seller & Key Inventory** | Seeded via SQL migrations (`002_seed.sql`) + startup artwork/demo sync | Focuses engineering effort on buyer discovery, offer comparison, and concurrency-safe checkout rather than a merchant back-office CRUD portal. |
 | **Pricing & Currency** | Integer `price_cents` displayed in EUR (`€`) | Prevents floating-point rounding bugs while avoiding multi-currency FX conversion tables within the 7-day scope. |
 | **Session Storage** | HS256 JWT stored in `localStorage` (`72h` TTL) | Keeps cross-origin Vercel ➔ Render deployment straightforward without cookie `SameSite` / domain proxying complexity. |
@@ -185,6 +186,17 @@ npm run build
 npm run dev
 ```
 Storefront runs on `http://localhost:5173`.
+
+---
+
+### Optional Environment Variables (Stripe Test Mode & Emails)
+
+The application runs out-of-the-box with simulated card checkout and stdout `[EMAIL PREVIEW]` logging. To enable hosted Stripe Test Mode or Resend HTML delivery, set these optional variables in `.env` (see [`backend/.env.example`](./backend/.env.example)):
+
+- `FRONTEND_URL` — Base URL used for Stripe Checkout success/cancel redirects and email CTAs (default `http://localhost:5173`).
+- `STRIPE_SECRET_KEY` — Stripe Test Mode secret key (`sk_test_...`). Enables `GET /api/config/payment` (`stripe_enabled: true`), `POST /api/checkout/stripe-session`, and idempotent fulfillment via `orders.stripe_session_id`.
+- `RESEND_API_KEY` — Resend API key (`re_...`) for dispatching Eneba-styled welcome and key-delivery HTML emails asynchronously.
+- `EMAIL_FROM` — Verified sender address (default `onboarding@resend.dev`).
 
 ---
 

@@ -11,11 +11,12 @@ import (
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
+	authService  *services.AuthService
+	emailService *services.EmailService
 }
 
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService *services.AuthService, emailService *services.EmailService) *AuthHandler {
+	return &AuthHandler{authService: authService, emailService: emailService}
 }
 
 // HandleRegister serves POST /api/auth/register
@@ -40,6 +41,10 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "Failed to register user")
 		}
 		return
+	}
+
+	if h.emailService != nil {
+		h.emailService.SendWelcomeEmailAsync(resp.User.Email, resp.User.FullName)
 	}
 
 	writeJSON(w, http.StatusCreated, resp)

@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Package, Sparkles } from 'lucide-react';
 import { api, errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import type { Order } from '../types/api';
+import { useCart } from '../context/CartContext';
+import type { CheckoutItemRequest, Order } from '../types/api';
 import { formatDateTime, formatPrice } from '../utils/format';
 import { useDocumentTitle } from '../utils/hooks';
 import { ErrorState } from '../components/ErrorState';
 import { OrderKeyCard } from '../components/orders/OrderKeyCard';
+import { PENDING_STRIPE_ITEMS_KEY } from './CheckoutPage';
 
 interface LocationState {
   order?: Order;
   justPurchased?: boolean;
 }
+
+// Tracks in-flight Stripe session finalization across React StrictMode double mounts.
+const inflightStripeCheckouts = new Map<string, Promise<Order>>();
 
 function readCachedOrder(id: string | undefined): Order | null {
   if (!id) return null;
@@ -25,25 +30,123 @@ function readCachedOrder(id: string | undefined): Order | null {
   }
 }
 
+function readCachedStripeOrder(sessionId: string | null): Order | null {
+  if (!sessionId) return null;
+  try {
+    const raw = sessionStorage.getItem(`eneba.stripeOrder.${sessionId}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as Order;
+  } catch {
+    return null;
+  }
+}
+
+function readPendingStripeItems(): CheckoutItemRequest[] {
+  try {
+    const raw = sessionStorage.getItem(PENDING_STRIPE_ITEMS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is CheckoutItemRequest =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as CheckoutItemRequest).seller_offer_id === 'string' &&
+        typeof (item as CheckoutItemRequest).quantity === 'number',
+    );
+  } catch {
+    return [];
+  }
+}
+
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const location = useLocation();
   const { token, isAuthenticated } = useAuth();
+  const { items: cartItems, clear: clearCart } = useCart();
+
+  const stripeSessionId = searchParams.get('session_id')?.trim() || null;
 
   const navState = (location.state ?? null) as LocationState | null;
-  const initialOrder = navState?.order ?? readCachedOrder(id);
-  const justPurchased = Boolean(navState?.justPurchased);
+  const initialOrder = navState?.order ?? readCachedOrder(id) ?? readCachedStripeOrder(stripeSessionId);
+  const justPurchased = Boolean(navState?.justPurchased || stripeSessionId);
 
   const [order, setOrder] = useState<Order | null>(initialOrder);
   const [loading, setLoading] = useState(!initialOrder);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [revealAll, setRevealAll] = useState(false);
+  const [revealAll, setRevealAll] = useState(Boolean(stripeSessionId));
 
   useDocumentTitle(order ? `Order #${order.id.slice(0, 8)}` : 'Order Confirmation');
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
+
+    // 1. Returning from Stripe Checkout (/checkout/success?session_id=...)
+    if (stripeSessionId) {
+      if (order) {
+        setLoading(false);
+        return;
+      }
+
+      let active = true;
+      setLoading(true);
+      setError(null);
+
+      const pending = readPendingStripeItems();
+      const checkoutItems: CheckoutItemRequest[] =
+        pending.length > 0
+          ? pending
+          : cartItems.map((item) => ({
+              seller_offer_id: item.sellerOfferId,
+              quantity: item.quantity,
+            }));
+
+      let promise = inflightStripeCheckouts.get(stripeSessionId);
+      if (!promise) {
+        promise = api
+          .checkout(
+            {
+              items: checkoutItems,
+              payment_method: 'stripe_test',
+              stripe_session_id: stripeSessionId,
+            },
+            token,
+          )
+          .finally(() => {
+            inflightStripeCheckouts.delete(stripeSessionId);
+          });
+        inflightStripeCheckouts.set(stripeSessionId, promise);
+      }
+
+      promise
+        .then((fulfilled) => {
+          try {
+            sessionStorage.setItem(`eneba.lastOrder.${fulfilled.id}`, JSON.stringify(fulfilled));
+            sessionStorage.setItem(`eneba.stripeOrder.${stripeSessionId}`, JSON.stringify(fulfilled));
+            sessionStorage.removeItem(PENDING_STRIPE_ITEMS_KEY);
+          } catch {
+            /* ignore storage failures */
+          }
+          clearCart();
+          if (!active) return;
+          setOrder(fulfilled);
+          setRevealAll(true);
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (!active) return;
+          setError(errorMessage(err));
+          setLoading(false);
+        });
+
+      return () => {
+        active = false;
+      };
+    }
+
+    // 2. Standard order receipt view (/orders/:id)
     if (order && (!id || order.id === id)) {
       setLoading(false);
       return;
@@ -72,7 +175,7 @@ export default function OrderDetailPage() {
       });
 
     return () => ctrl.abort();
-  }, [id, isAuthenticated, token, order, attempt]);
+  }, [id, stripeSessionId, isAuthenticated, token, order, attempt, cartItems, clearCart]);
 
   const retry = useCallback(() => {
     setOrder(null);
@@ -80,12 +183,12 @@ export default function OrderDetailPage() {
   }, []);
 
   if (!isAuthenticated || !token) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
 
   if (loading) {
     return (
-      <div className="space-y-6" aria-busy="true" aria-label="Loading order">
+      <div className="space-y-6" aria-busy="true" aria-label={stripeSessionId ? 'Verifying Stripe payment & unlocking keys' : 'Loading order'}>
         <div className="h-32 animate-pulse rounded-none bg-eneba-card" />
         <div className="h-44 animate-pulse rounded-none bg-eneba-card" />
       </div>

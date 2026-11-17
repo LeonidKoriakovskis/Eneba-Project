@@ -13,10 +13,45 @@ import (
 
 type OrderHandler struct {
 	orderService *services.OrderService
+	userRepo     *repository.UserRepository
+	emailService *services.EmailService
 }
 
-func NewOrderHandler(orderService *services.OrderService) *OrderHandler {
-	return &OrderHandler{orderService: orderService}
+func NewOrderHandler(orderService *services.OrderService, userRepo *repository.UserRepository, emailService *services.EmailService) *OrderHandler {
+	return &OrderHandler{
+		orderService: orderService,
+		userRepo:     userRepo,
+		emailService: emailService,
+	}
+}
+
+func writeCheckoutError(w http.ResponseWriter, err error, logPrefix string) {
+	var vErr *services.ValidationError
+	var oosErr *repository.OutOfStockError
+
+	switch {
+	case errors.As(err, &vErr):
+		writeError(w, http.StatusBadRequest, vErr.Message)
+	case errors.Is(err, repository.ErrOfferNotFound):
+		writeError(w, http.StatusNotFound, "One or more seller offers do not exist")
+	case errors.As(err, &oosErr):
+		writeJSON(w, http.StatusConflict, map[string]interface{}{
+			"error":           oosErr.Error(),
+			"seller_offer_id": oosErr.SellerOfferID,
+			"requested":       oosErr.Requested,
+			"available":       oosErr.Available,
+		})
+	case errors.Is(err, services.ErrStripeDisabled):
+		writeError(w, http.StatusBadRequest, "Stripe checkout is not configured on this server")
+	case errors.Is(err, services.ErrStripeUnpaid):
+		writeError(w, http.StatusPaymentRequired, "Stripe checkout session payment has not been completed")
+	case errors.Is(err, services.ErrStripeAPI):
+		log.Printf("%s stripe error: %v", logPrefix, err)
+		writeError(w, http.StatusBadGateway, "Unable to verify payment with Stripe")
+	default:
+		log.Printf("%s error: %v", logPrefix, err)
+		writeError(w, http.StatusInternalServerError, "Checkout failed")
+	}
 }
 
 // HandleCheckout serves POST /api/orders/checkout (JWT protected)
@@ -34,30 +69,25 @@ func (h *OrderHandler) HandleCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := h.orderService.Checkout(r.Context(), userID, req)
+	order, createdNew, err := h.orderService.Checkout(r.Context(), userID, req)
 	if err != nil {
-		var vErr *services.ValidationError
-		var oosErr *repository.OutOfStockError
-		switch {
-		case errors.As(err, &vErr):
-			writeError(w, http.StatusBadRequest, vErr.Message)
-		case errors.Is(err, repository.ErrOfferNotFound):
-			writeError(w, http.StatusNotFound, "One or more seller offers do not exist")
-		case errors.As(err, &oosErr):
-			writeJSON(w, http.StatusConflict, map[string]interface{}{
-				"error":           oosErr.Error(),
-				"seller_offer_id": oosErr.SellerOfferID,
-				"requested":       oosErr.Requested,
-				"available":       oosErr.Available,
-			})
-		default:
-			log.Printf("checkout error: %v", err)
-			writeError(w, http.StatusInternalServerError, "Checkout failed")
-		}
+		writeCheckoutError(w, err, "checkout")
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, order)
+	if createdNew && h.emailService != nil && h.userRepo != nil {
+		if user, uErr := h.userRepo.GetByID(r.Context(), userID); uErr == nil {
+			h.emailService.SendOrderKeyEmailAsync(user.Email, user.FullName, order)
+		} else {
+			log.Printf("⚠️ failed to load user %s for order key email: %v", userID, uErr)
+		}
+	}
+
+	status := http.StatusCreated
+	if !createdNew {
+		status = http.StatusOK
+	}
+	writeJSON(w, status, order)
 }
 
 // HandleListOrders serves GET /api/orders (JWT protected)

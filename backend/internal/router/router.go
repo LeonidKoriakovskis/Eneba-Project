@@ -21,6 +21,7 @@ type Deps struct {
 	Catalog        *handlers.CatalogHandler
 	Auth           *handlers.AuthHandler
 	Orders         *handlers.OrderHandler
+	Stripe         *handlers.StripeHandler
 }
 
 func New(d Deps) http.Handler {
@@ -57,11 +58,20 @@ func New(d Deps) http.Handler {
 			r.Post("/auth/login", d.Auth.HandleLogin)
 		}
 
-		if d.Orders != nil && d.Tokens != nil {
+		if d.Stripe != nil {
+			r.Get("/config/payment", d.Stripe.HandleGetPaymentConfig)
+		}
+
+		if d.Tokens != nil && (d.Orders != nil || d.Stripe != nil) {
 			r.Group(func(r chi.Router) {
 				r.Use(authmw.Authenticate(d.Tokens))
-				r.Post("/orders/checkout", d.Orders.HandleCheckout)
-				r.Get("/orders", d.Orders.HandleListOrders)
+				if d.Orders != nil {
+					r.Post("/orders/checkout", d.Orders.HandleCheckout)
+					r.Get("/orders", d.Orders.HandleListOrders)
+				}
+				if d.Stripe != nil {
+					r.Post("/checkout/stripe-session", d.Stripe.HandleCreateStripeSession)
+				}
 			})
 		}
 	})

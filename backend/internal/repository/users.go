@@ -59,6 +59,22 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 	return &u, nil
 }
 
+// GetByID fetches a user profile by UUID.
+func (r *UserRepository) GetByID(ctx context.Context, id string) (*models.User, error) {
+	var u models.User
+	err := r.pool.QueryRow(ctx, `
+		SELECT id, email, password_hash, full_name, created_at, updated_at
+		FROM users WHERE id = $1
+	`, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.CreatedAt, &u.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to query user by id: %w", err)
+	}
+	return &u, nil
+}
+
 // UpsertUser ensures a seeded/system user exists with the given password hash and display name.
 func (r *UserRepository) UpsertUser(ctx context.Context, id, email, passwordHash, fullName string) error {
 	_, err := r.pool.Exec(ctx, `

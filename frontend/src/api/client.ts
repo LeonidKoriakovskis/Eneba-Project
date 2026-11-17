@@ -1,15 +1,18 @@
 import type {
   AuthResponse,
+  CheckoutItemRequest,
   CheckoutRequest,
   HealthResponse,
   HomepageResponse,
   LoginRequest,
   Order,
   OrdersResponse,
+  PaymentConfigResponse,
   ProductDetail,
   ProductListResponse,
   ProductQuery,
   RegisterRequest,
+  StripeSessionResponse,
 } from '../types/api';
 
 export const API_BASE_URL: string = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
@@ -101,6 +104,15 @@ export const api = {
   register: (payload: RegisterRequest) => request<AuthResponse>('/api/auth/register', { method: 'POST', body: payload }),
 
   login: (payload: LoginRequest) => request<AuthResponse>('/api/auth/login', { method: 'POST', body: payload }),
+
+  getPaymentConfig: (signal?: AbortSignal) => request<PaymentConfigResponse>('/api/config/payment', { signal }),
+
+  createStripeSession: (items: CheckoutItemRequest[], token: string) =>
+    request<StripeSessionResponse>('/api/checkout/stripe-session', {
+      method: 'POST',
+      body: { items },
+      token,
+    }),
 
   checkout: (payload: CheckoutRequest, token: string) =>
     request<Order>('/api/orders/checkout', { method: 'POST', body: payload, token }),

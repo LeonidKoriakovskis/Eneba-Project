@@ -15,6 +15,10 @@ type Config struct {
 	JWTExpirationHours int
 	AllowedOrigins     []string
 	Environment        string
+	FrontendURL        string
+	StripeSecretKey    string
+	ResendAPIKey       string
+	EmailFrom          string
 }
 
 func Load() *Config {
@@ -47,6 +51,10 @@ func Load() *Config {
 		JWTExpirationHours: expHours,
 		AllowedOrigins:     origins,
 		Environment:        getEnv("ENV", "development"),
+		FrontendURL:        strings.TrimRight(getEnv("FRONTEND_URL", "http://localhost:5173"), "/"),
+		StripeSecretKey:    strings.TrimSpace(os.Getenv("STRIPE_SECRET_KEY")),
+		ResendAPIKey:       strings.TrimSpace(os.Getenv("RESEND_API_KEY")),
+		EmailFrom:          getEnv("EMAIL_FROM", "onboarding@resend.dev"),
 	}
 }
 

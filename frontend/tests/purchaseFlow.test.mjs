@@ -170,6 +170,16 @@ test('Authenticated user sees Checkout payment simulator and AuthPage redirects 
   assert.match(checkoutHtml, /Credit \/ Debit Card \(Test Mode\)/);
   assert.match(checkoutHtml, /Pay €28\.99 &amp; Reveal Keys/);
 
+  // Stripe Test Mode UI + canceled notice
+  const stripeCheckoutHtml = renderWithProviders(
+    React.createElement(CheckoutPage, { defaultStripeEnabled: true }),
+    ['/checkout?canceled=1'],
+  );
+  assert.match(stripeCheckoutHtml, /Stripe Checkout \(Test Mode\)/);
+  assert.match(stripeCheckoutHtml, /4242 4242 4242 4242/);
+  assert.match(stripeCheckoutHtml, /Stripe checkout was canceled/);
+  assert.match(stripeCheckoutHtml, /Continue to Stripe \(€28\.99\)/);
+
   localStorage.clear();
 });
 
@@ -222,6 +232,29 @@ test('OrderDetailPage renders confirmation screen from cached order receipt', ()
   assert.match(detailHtml, /Payment Successful — Your Digital Keys Are Ready!/);
   assert.match(detailHtml, /#99999999/);
   assert.match(detailHtml, /Reveal All Keys/);
+
+  // Stripe Checkout return route (/checkout/success?session_id=...) renders fulfilled keys cleanly
+  sessionStorage.setItem(
+    'eneba.stripeOrder.cs_test_123',
+    JSON.stringify({
+      id: orderId,
+      user_id: 'u1',
+      total_cents: 2899,
+      status: 'COMPLETED',
+      created_at: '2026-11-17T14:45:00Z',
+      items: [sampleOrderItem],
+    }),
+  );
+  const stripeSuccessHtml = renderWithProviders(
+    React.createElement(
+      Routes,
+      null,
+      React.createElement(Route, { path: '/checkout/success', element: React.createElement(OrderDetailPage) }),
+    ),
+    ['/checkout/success?session_id=cs_test_123'],
+  );
+  assert.match(stripeSuccessHtml, /Payment Successful — Your Digital Keys Are Ready!/);
+  assert.match(stripeSuccessHtml, /CP77-PV01-9X82/);
 
   localStorage.clear();
   sessionStorage.clear();

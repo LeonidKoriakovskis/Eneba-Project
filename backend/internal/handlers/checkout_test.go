@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -33,11 +34,16 @@ const (
 )
 
 type testEnv struct {
-	handler http.Handler
-	pool    *pgxpool.Pool
+	handler       http.Handler
+	pool          *pgxpool.Pool
+	stripeService *services.StripeService
 }
 
 func setupFullEnv(t *testing.T) *testEnv {
+	return setupEnvWithStripeKey(t, "")
+}
+
+func setupEnvWithStripeKey(t *testing.T, stripeKey string) *testEnv {
 	t.Helper()
 	_ = godotenv.Load("../../.env")
 	_ = godotenv.Load("../.env")
@@ -56,21 +62,32 @@ func setupFullEnv(t *testing.T) *testEnv {
 	t.Cleanup(database.Close)
 
 	pool := database.Pool
+	userRepo := repository.NewUserRepository(pool)
+	orderRepo := repository.NewOrderRepository(pool)
+	if err := orderRepo.EnsureSchema(ctx); err != nil {
+		t.Fatalf("failed to ensure order schema: %v", err)
+	}
+
 	tokens := auth.NewTokenManager("test-secret-test-secret-test-secret", time.Hour)
-	authService := services.NewAuthService(repository.NewUserRepository(pool), tokens)
+	authService := services.NewAuthService(userRepo, tokens)
 	if err := authService.EnsureDemoUsers(ctx); err != nil {
 		t.Fatalf("failed to seed demo users: %v", err)
 	}
+
+	stripeService := services.NewStripeService(stripeKey, "http://localhost:5173")
+	emailService := services.NewEmailService("", "onboarding@resend.dev", "http://localhost:5173")
+	orderService := services.NewOrderService(orderRepo, stripeService)
 
 	h := router.New(router.Deps{
 		AllowedOrigins: []string{"http://localhost:5173"},
 		Tokens:         tokens,
 		Health:         handlers.NewHealthHandler(database),
 		Catalog:        handlers.NewCatalogHandler(services.NewCatalogService(repository.NewCatalogRepository(pool))),
-		Auth:           handlers.NewAuthHandler(authService),
-		Orders:         handlers.NewOrderHandler(services.NewOrderService(repository.NewOrderRepository(pool))),
+		Auth:           handlers.NewAuthHandler(authService, emailService),
+		Orders:         handlers.NewOrderHandler(orderService, userRepo, emailService),
+		Stripe:         handlers.NewStripeHandler(stripeService, orderService),
 	})
-	return &testEnv{handler: h, pool: pool}
+	return &testEnv{handler: h, pool: pool, stripeService: stripeService}
 }
 
 func (e *testEnv) do(t *testing.T, method, path, token string, body interface{}) *httptest.ResponseRecorder {
@@ -428,5 +445,188 @@ func TestCheckout_ConcurrentBuyers_NeverDoubleSellKeys(t *testing.T) {
 	}
 	if left := env.availableKeys(t, offerHogwartsSec); left != 0 {
 		t.Errorf("expected stock fully drained, %d left", left)
+	}
+}
+
+func TestStripe_ConfigSessionAndIdempotentFulfillment(t *testing.T) {
+	// 1) Disabled state reports stripe_enabled: false
+	disabledEnv := setupFullEnv(t)
+	cfgRec := disabledEnv.do(t, http.MethodGet, "/api/config/payment", "", nil)
+	if cfgRec.Code != http.StatusOK {
+		t.Fatalf("config/payment: expected 200, got %d", cfgRec.Code)
+	}
+	var cfg models.PaymentConfigResponse
+	_ = json.Unmarshal(cfgRec.Body.Bytes(), &cfg)
+	if cfg.StripeEnabled {
+		t.Fatalf("expected stripe_enabled=false when secret key is empty")
+	}
+
+	// 2) Enabled state with mock Stripe REST API
+	paidStatus := "unpaid"
+	stripeSessionID := fmt.Sprintf("cs_test_%d", time.Now().UnixNano())
+	mockStripe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodPost && r.URL.Path == "/v1/checkout/sessions" {
+			_ = r.ParseForm()
+			if r.FormValue("mode") != "payment" || !strings.Contains(r.FormValue("success_url"), "session_id={CHECKOUT_SESSION_ID}") {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":{"message":"invalid session payload"}}`))
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"id":  stripeSessionID,
+				"url": "https://checkout.stripe.com/c/pay/" + stripeSessionID,
+			})
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/checkout/sessions/"+stripeSessionID {
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"id":             stripeSessionID,
+				"payment_status": paidStatus,
+				"status":         "complete",
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(mockStripe.Close)
+
+	env := setupEnvWithStripeKey(t, "sk_test_mock_key")
+	env.stripeService.SetBaseURL(mockStripe.URL)
+
+	cfgRec = env.do(t, http.MethodGet, "/api/config/payment", "", nil)
+	_ = json.Unmarshal(cfgRec.Body.Bytes(), &cfg)
+	if !cfg.StripeEnabled {
+		t.Fatalf("expected stripe_enabled=true when secret key is configured")
+	}
+
+	user := env.registerUser(t)
+	before := env.availableKeys(t, offerGTAFirst)
+
+	// Out-of-stock check upfront before calling Stripe
+	oosRec := env.do(t, http.MethodPost, "/api/checkout/stripe-session", user.Token, map[string]interface{}{
+		"items": []models.CheckoutItem{{SellerOfferID: offerGTAFirst, Quantity: 10}},
+	})
+	if oosRec.Code != http.StatusConflict {
+		t.Fatalf("stripe-session out of stock: expected 409, got %d: %s", oosRec.Code, oosRec.Body.String())
+	}
+
+	// Valid session creation returns URL + session_id
+	sessRec := env.do(t, http.MethodPost, "/api/checkout/stripe-session", user.Token, map[string]interface{}{
+		"items": []models.CheckoutItem{{SellerOfferID: offerGTAFirst, Quantity: 1}},
+	})
+	if sessRec.Code != http.StatusOK {
+		t.Fatalf("stripe-session: expected 200, got %d: %s", sessRec.Code, sessRec.Body.String())
+	}
+	var sess models.StripeSessionResponse
+	_ = json.Unmarshal(sessRec.Body.Bytes(), &sess)
+	if sess.SessionID != stripeSessionID || !strings.Contains(sess.URL, stripeSessionID) {
+		t.Fatalf("unexpected stripe session response: %+v", sess)
+	}
+
+	// Unpaid Stripe session must be rejected with 402
+	unpaidRec := env.do(t, http.MethodPost, "/api/orders/checkout", user.Token, models.CheckoutRequest{
+		Items:           []models.CheckoutItem{{SellerOfferID: offerGTAFirst, Quantity: 1}},
+		PaymentMethod:   "stripe_test",
+		StripeSessionID: stripeSessionID,
+	})
+	if unpaidRec.Code != http.StatusPaymentRequired {
+		t.Fatalf("expected 402 for unpaid stripe session, got %d: %s", unpaidRec.Code, unpaidRec.Body.String())
+	}
+
+	// Mark paid -> allocates key cleanly (201)
+	paidStatus = "paid"
+	firstOrderRec := env.do(t, http.MethodPost, "/api/orders/checkout", user.Token, models.CheckoutRequest{
+		Items:           []models.CheckoutItem{{SellerOfferID: offerGTAFirst, Quantity: 1}},
+		PaymentMethod:   "stripe_test",
+		StripeSessionID: stripeSessionID,
+	})
+	if firstOrderRec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 on paid stripe fulfillment, got %d: %s", firstOrderRec.Code, firstOrderRec.Body.String())
+	}
+	var firstOrder models.OrderDetail
+	_ = json.Unmarshal(firstOrderRec.Body.Bytes(), &firstOrder)
+	if len(firstOrder.Items) != 1 || firstOrder.Items[0].LicenseKey == "" {
+		t.Fatalf("expected revealed key on stripe fulfillment, got %+v", firstOrder)
+	}
+
+	if after := env.availableKeys(t, offerGTAFirst); after != before-1 {
+		t.Fatalf("expected stock %d after first stripe checkout, got %d", before-1, after)
+	}
+
+	// Refresh/retry with identical stripe_session_id -> idempotent 200 OK with same order & key, stock unchanged!
+	replayRec := env.do(t, http.MethodPost, "/api/orders/checkout", user.Token, models.CheckoutRequest{
+		Items:           []models.CheckoutItem{{SellerOfferID: offerGTAFirst, Quantity: 1}},
+		PaymentMethod:   "stripe_test",
+		StripeSessionID: stripeSessionID,
+	})
+	if replayRec.Code != http.StatusOK {
+		t.Fatalf("expected 200 on idempotent stripe replay, got %d: %s", replayRec.Code, replayRec.Body.String())
+	}
+	var replayOrder models.OrderDetail
+	_ = json.Unmarshal(replayRec.Body.Bytes(), &replayOrder)
+	if replayOrder.ID != firstOrder.ID || replayOrder.Items[0].LicenseKey != firstOrder.Items[0].LicenseKey {
+		t.Fatalf("idempotent replay returned different order: got %+v want %+v", replayOrder, firstOrder)
+	}
+	if afterReplay := env.availableKeys(t, offerGTAFirst); afterReplay != before-1 {
+		t.Fatalf("idempotent replay decremented stock again: got %d want %d", afterReplay, before-1)
+	}
+}
+
+func TestEmailService_HTMLTemplatesAndResendDelivery(t *testing.T) {
+	welcomeHTML := services.BuildWelcomeEmailHTML("Alex Gamer", "https://eneba-demo.vercel.app")
+	for _, want := range []string{"#1F0A4D", "#FFDC00", "Welcome aboard, Alex Gamer!", "https://eneba-demo.vercel.app/store"} {
+		if !strings.Contains(welcomeHTML, want) {
+			t.Errorf("welcome email HTML missing %q", want)
+		}
+	}
+
+	orderHTML := services.BuildOrderKeyEmailHTML("Alex Gamer", &models.OrderDetail{
+		ID:         "12345678-0000-0000-0000-000000000001",
+		TotalCents: 2899,
+		Items: []models.OrderItemDetail{
+			{
+				ProductTitle:   "Cyberpunk 2077: Phantom Liberty Bundle",
+				Platform:       "Steam",
+				Region:         "GLOBAL",
+				SellerName:     "PixelVault Deals",
+				UnitPriceCents: 2899,
+				LicenseKey:     "CP77-PV01-9X82",
+			},
+		},
+	}, "https://eneba-demo.vercel.app")
+	for _, want := range []string{
+		"#FFDC00",
+		"Order #12345678",
+		"€28.99",
+		"CP77-PV01-9X82",
+		"https://eneba-demo.vercel.app/orders/12345678-0000-0000-0000-000000000001",
+	} {
+		if !strings.Contains(orderHTML, want) {
+			t.Errorf("order email HTML missing %q", want)
+		}
+	}
+
+	delivered := make(chan map[string]interface{}, 2)
+	mockResend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		delivered <- body
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"email_123"}`))
+	}))
+	t.Cleanup(mockResend.Close)
+
+	svc := services.NewEmailService("re_test_123", "onboarding@resend.dev", "http://localhost:5173")
+	svc.SetResendEndpoint(mockResend.URL)
+	svc.SendWelcomeEmailAsync("alex@example.com", "Alex Gamer")
+
+	select {
+	case msg := <-delivered:
+		if msg["subject"] != "Welcome to Eneba Demo Marketplace!" {
+			t.Errorf("unexpected email subject: %+v", msg["subject"])
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for async welcome email delivery")
 	}
 }
