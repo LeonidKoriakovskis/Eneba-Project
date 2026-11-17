@@ -16,6 +16,8 @@ export { cartReducer, CartProvider, MAX_QTY_PER_OFFER } from '../../src/context/
 export { AuthProvider } from '../../src/context/AuthContext.tsx';
 export { sanitizeRedirect, formatPrice, formatDateTime } from '../../src/utils/format.ts';
 export { OrderKeyCard } from '../../src/components/orders/OrderKeyCard.tsx';
+export { CartDrawer } from '../../src/components/CartDrawer.tsx';
+export { isFuzzyMatch } from '../../src/components/SearchBar.tsx';
 export { default as CartPage } from '../../src/pages/CartPage.tsx';
 export { default as AuthPage } from '../../src/pages/AuthPage.tsx';
 export { default as CheckoutPage } from '../../src/pages/CheckoutPage.tsx';

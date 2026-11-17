@@ -104,7 +104,7 @@ export default function ProductPage() {
   const handleBuyNow = useCallback(
     (offer: SellerOffer) => {
       if (!product) return;
-      if (getQuantity(offer.id) === 0) addItem(toCartItem(product, offer), 1);
+      if (getQuantity(offer.id) === 0) addItem(toCartItem(product, offer), 1, { openDrawer: false });
       navigate('/cart');
     },
     [addItem, getQuantity, navigate, product],

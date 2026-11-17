@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { CartDrawer } from './CartDrawer';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -36,6 +37,7 @@ export function Layout() {
     <div className="flex min-h-screen flex-col">
       <ScrollToTop />
       <Navbar />
+      <CartDrawer />
       <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6">
         <Outlet />
       </main>

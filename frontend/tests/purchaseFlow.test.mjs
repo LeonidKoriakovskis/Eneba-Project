@@ -8,6 +8,7 @@ const { renderToStaticMarkup } = require('react-dom/server');
 
 const {
   AuthProvider,
+  CartDrawer,
   CartPage,
   CartProvider,
   CheckoutPage,
@@ -20,6 +21,7 @@ const {
   Routes,
   AuthPage,
   cartReducer,
+  isFuzzyMatch,
   sanitizeRedirect,
 } = require('../.vite-temp/tests/bundle.cjs');
 
@@ -205,4 +207,38 @@ test('OrderDetailPage renders confirmation screen from cached order receipt', ()
 
   localStorage.clear();
   sessionStorage.clear();
+});
+
+
+test('isFuzzyMatch detects typo-tolerant matches vs literal substring matches', () => {
+  assert.equal(isFuzzyMatch('Cyberpunk 2077: Phantom Liberty Bundle', 'cybrpunk'), true);
+  assert.equal(isFuzzyMatch('Elden Ring: Shadow of the Erdtree Edition', 'eldn'), true);
+  assert.equal(isFuzzyMatch('Cyberpunk 2077: Phantom Liberty Bundle', 'cyber'), false);
+  assert.equal(isFuzzyMatch('Cyberpunk 2077: Phantom Liberty Bundle', 'a'), false);
+});
+
+test('CartDrawer renders quick-cart items, savings, quantity controls, and checkout CTA', () => {
+  localStorage.setItem('eneba.cart', JSON.stringify([{ ...sampleCartItem, quantity: 2 }]));
+  const html = renderWithProviders(React.createElement(CartDrawer, { forceOpen: true }), ['/']);
+  assert.match(html, /Your Cart/);
+  assert.match(html, /Cyberpunk 2077: Phantom Liberty Bundle/);
+  assert.match(html, /PixelVault Deals/);
+  assert.match(html, /€57\.98/);
+  assert.match(html, /Proceed to Checkout/);
+  assert.match(html, /View Full Cart/);
+  localStorage.clear();
+});
+
+test('OrderKeyCard renders Verify / Test Redeem trigger and platform redemption preview modal', () => {
+  const closedHtml = renderWithProviders(
+    React.createElement(OrderKeyCard, { item: sampleOrderItem, defaultRevealed: false }),
+  );
+  assert.match(closedHtml, /Verify \/ Test Redeem/);
+
+  const modalHtml = renderWithProviders(
+    React.createElement(OrderKeyCard, { item: sampleOrderItem, defaultRedeemOpen: true }),
+  );
+  assert.match(modalHtml, /Steam Client Product Activation/);
+  assert.match(modalHtml, /CP77-PV01-9X82/);
+  assert.match(modalHtml, /Key Verified &amp; Activated on Account/);
 });

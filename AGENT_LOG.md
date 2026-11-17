@@ -772,3 +772,51 @@ Perform the following repository cleanup and documentation tasks:
 - `go test -v -count=1 ./...`: **11/11 tests passed** (`ok eneba-marketplace/backend/internal/handlers 2.510s`).
 - `npm test` (frontend): **6/6 tests passed** (`297.46ms`).
 - `npm run build` (`tsc -b && vite build`): exited with code `0` (`1626 modules transformed`, `dist/assets/index-Bgn89CAr.css 36.49 kB`, `dist/assets/index-29mFSXlE.js 280.11 kB`, built in `5.35s`).
+
+
+---
+
+## Turn 12: Live Search Polish, Slide-Over Quick Cart Drawer & Test Key Activation Modal
+
+### 1. User Prompt
+```text
+Before we deploy to Neon, Render, and Vercel, let's polish the core buyer purchase flow (Homepage / Search -> Product Page -> Cart -> Checkout -> Payment -> Order & Key) so every touchpoint feels unmistakably like Eneba. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Implement these three focused buyer-experience upgrades without adding any unrequested admin bloat:
+
+1. RICH LIVE SEARCH DROPDOWN IN GLOBAL NAVBAR (`frontend/src/components/Navbar.tsx` or `SearchBar.tsx`):
+   - As the user types in the global search bar from anywhere in the app (debounced ~250ms against `GET /api/products?q=...`), show an instant Eneba-styled autocomplete dropdown with:
+     - Vertical cover thumbnail, game title, `<PlatformBadge />`, region pill, discount badge, and starting price (`From €XX.XX`),
+     - Keyboard navigation (Arrow Up/Down + Enter to open product, Escape to close) and a `"See all X results for '...'"` footer link to `/store?q=...`,
+     - A subtle `"Fuzzy match"` hint when typo tolerance kicks in (e.g., searching `"cybrpunk"` or `"eldn"`).
+
+2. ENEBA SLIDE-OVER QUICK CART DRAWER (`frontend/src/components/CartDrawer.tsx`):
+   - When a buyer clicks `Add to Cart` on any product card or seller offer (or clicks the Cart button in the navbar), smoothly slide open a right-hand Cart Drawer overlay showing:
+     - Added item confirmation banner, cover thumbnail, platform & region tags, selected seller name, unit price, and `-` / `+` quantity controls capped at available stock,
+     - Live subtotal + total savings calculation,
+     - Primary yellow `Proceed to Checkout` CTA (routing to `/checkout` or `/login?redirect=/checkout`) and a secondary `View Full Cart` link to `/cart`,
+     - Clean Escape-key and backdrop click dismissal.
+
+3. INTERACTIVE "TEST KEY ACTIVATION" MODAL ON ORDER & KEY REVEAL (`frontend/src/components/OrderKeyCard.tsx`):
+   - On the Order & Key confirmation screen (`/orders/:id` and `/orders`), alongside the `Reveal Key` and `Copy Key` buttons, add a `"Verify / Test Redeem"` button that opens a sleek platform redemption preview modal (styled for Steam / PlayStation / Xbox / Nintendo) pre-filled with the purchased `XXXX-YYYY-ZZZZ` key so reviewers can simulate activating their newly purchased key and see a `"Key Verified & Activated on Account"` confirmation state.
+
+Verify `npm test` and `npm run build` both pass with zero errors, and stop so we can push to GitHub and deploy live.
+```
+
+### 2. Summary of Changes
+1. **Rich Live Search Dropdown (`frontend/src/components/SearchBar.tsx`)**:
+   - Exported `isFuzzyMatch(title, query)` to detect when `pg_trgm` matched a query that isn't a literal substring (`"cybrpunk"`, `"eldn"`), displaying a subtle **`Fuzzy match`** pill in `eneba-teal`.
+   - Enhanced each dropdown suggestion row with vertical cover thumbnail, `<PlatformBadge />`, `<RegionTag />`, `<DiscountPill />` + strikethrough original price, **`From €XX.XX`** pricing, keyboard navigation (`ArrowUp`/`ArrowDown`/`Enter`/`Escape`), and footer link `"See all X results for '...'"`.
+2. **Slide-Over Quick Cart Drawer (`frontend/src/components/CartDrawer.tsx`, `CartContext.tsx`, `Navbar.tsx`, `Layout.tsx`, `ProductPage.tsx`)**:
+   - Extended `CartContext` with `isDrawerOpen`, `lastAddedItem`, `openDrawer`, `closeDrawer`, and `options?: { openDrawer?: boolean }` on `addItem` (`Add to Cart` opens the drawer; `Buy Now` goes directly to `/cart`).
+   - Built `CartDrawer.tsx` with right-hand slide-over overlay, added-item confirmation banner, cover thumbnails, platform/region badges, seller name, `-` / `+` quantity controls capped at available stock, live subtotal + savings, primary `Proceed to Checkout` CTA, secondary `View Full Cart` link, and Escape / backdrop / route-change dismissal.
+   - Wired Navbar Cart button to `openDrawer` and mounted `<CartDrawer />` in `Layout.tsx`.
+3. **Interactive "Test Key Activation" Modal (`frontend/src/components/orders/OrderKeyCard.tsx` & `frontend/src/components/OrderKeyCard.tsx`)**:
+   - Added a **`Verify / Test Redeem`** button next to `Reveal Key` and `Copy Key` on every purchased key card.
+   - Implemented a platform-themed redemption simulator modal (tailored for Steam, PlayStation, Xbox, and Nintendo Switch) pre-filled with the `XXXX-YYYY-ZZZZ` key, showing `"Key Verified & Activated on Account"` with an interactive **"Re-verify Activation"** control and Escape / backdrop dismissal.
+4. **Automated Tests (`frontend/scripts/run-tests.mjs`, `frontend/tests/purchaseFlow.test.mjs`)**:
+   - Added 3 new tests covering `isFuzzyMatch`, `CartDrawer` rendering, and `OrderKeyCard` `"Verify / Test Redeem"` modal & `"Key Verified & Activated on Account"` state.
+
+### 3. Verification Results
+- `npm test` (`frontend/tests/purchaseFlow.test.mjs`): **9/9 tests passed** (`289.70ms`).
+- `npm run build` (`tsc -b && vite build`): exited with code `0` (`1627 modules transformed`, `dist/assets/index-BM4vmi7n.css 39.45 kB`, `dist/assets/index-CIWIQSMC.js 292.66 kB`, built in `5.04s`).

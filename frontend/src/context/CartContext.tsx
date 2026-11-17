@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 
 const STORAGE_KEY = 'eneba.cart';
 export const MAX_QTY_PER_OFFER = 10;
@@ -78,11 +78,19 @@ function loadStored(): CartItem[] {
   }
 }
 
+export interface AddCartOptions {
+  openDrawer?: boolean;
+}
+
 interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   totalCents: number;
-  addItem: (item: NewCartItem, quantity?: number) => void;
+  isDrawerOpen: boolean;
+  lastAddedItem: CartItem | null;
+  openDrawer: () => void;
+  closeDrawer: () => void;
+  addItem: (item: NewCartItem, quantity?: number, options?: AddCartOptions) => void;
   setQuantity: (sellerOfferId: string, quantity: number) => void;
   removeItem: (sellerOfferId: string) => void;
   clear: () => void;
@@ -93,6 +101,8 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, dispatch] = useReducer(cartReducer, undefined, loadStored);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [lastAddedItem, setLastAddedItem] = useState<CartItem | null>(null);
 
   useEffect(() => {
     try {
@@ -115,29 +125,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const addItem = useCallback(
-    (item: NewCartItem, quantity = 1) => dispatch({ type: 'add', item, quantity }),
-    [],
-  );
+  const openDrawer = useCallback(() => {
+    setIsDrawerOpen(true);
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    setIsDrawerOpen(false);
+  }, []);
+
+  const addItem = useCallback((item: NewCartItem, quantity = 1, options?: AddCartOptions) => {
+    dispatch({ type: 'add', item, quantity });
+    setLastAddedItem({
+      ...item,
+      quantity: clamp(quantity, Math.max(1, Math.min(item.maxQuantity, MAX_QTY_PER_OFFER))),
+    });
+    if (options?.openDrawer !== false) {
+      setIsDrawerOpen(true);
+    }
+  }, []);
+
   const setQuantity = useCallback(
     (sellerOfferId: string, quantity: number) => dispatch({ type: 'setQuantity', sellerOfferId, quantity }),
     [],
   );
   const removeItem = useCallback((sellerOfferId: string) => dispatch({ type: 'remove', sellerOfferId }), []);
-  const clear = useCallback(() => dispatch({ type: 'clear' }), []);
+  const clear = useCallback(() => {
+    dispatch({ type: 'clear' });
+    setLastAddedItem(null);
+    setIsDrawerOpen(false);
+  }, []);
 
   const value = useMemo<CartContextValue>(
     () => ({
       items,
       itemCount: items.reduce((n, i) => n + i.quantity, 0),
       totalCents: items.reduce((sum, i) => sum + i.unitPriceCents * i.quantity, 0),
+      isDrawerOpen,
+      lastAddedItem,
+      openDrawer,
+      closeDrawer,
       addItem,
       setQuantity,
       removeItem,
       clear,
       getQuantity: (id: string) => items.find((i) => i.sellerOfferId === id)?.quantity ?? 0,
     }),
-    [items, addItem, setQuantity, removeItem, clear],
+    [items, isDrawerOpen, lastAddedItem, openDrawer, closeDrawer, addItem, setQuantity, removeItem, clear],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

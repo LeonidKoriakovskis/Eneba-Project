@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Loader2, Search, X } from 'lucide-react';
+import { Loader2, Search, Sparkles, X } from 'lucide-react';
 import { api } from '../api/client';
 import type { ProductSummary } from '../types/api';
 import { useDebouncedValue } from '../utils/hooks';
 import { formatPrice } from '../utils/format';
 import { CoverImage } from './CoverImage';
-import { PlatformBadge, RegionTag } from './Badges';
+import { DiscountPill, PlatformBadge, RegionTag } from './Badges';
 
 const MIN_CHARS = 2;
 const MAX_SUGGESTIONS = 6;
+
+/** Returns true when pg_trgm matched a title despite not being a literal substring match. */
+export function isFuzzyMatch(title: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (q.length < MIN_CHARS) return false;
+  return !title.toLowerCase().includes(q);
+}
 
 export function SearchBar() {
   const navigate = useNavigate();
@@ -151,29 +158,62 @@ export function SearchBar() {
           role="listbox"
           className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl bg-eneba-card shadow-2xl ring-1 ring-white/10"
         >
-          {results.map((p, i) => (
-            <Link
-              key={p.id}
-              to={`/product/${p.slug}`}
-              role="option"
-              aria-selected={i === active}
-              onClick={close}
-              onMouseEnter={() => setActive(i)}
-              className={`flex items-center gap-3 px-3 py-2.5 transition ${i === active ? 'bg-eneba-cardHover' : ''}`}
-            >
-              <CoverImage src={p.cover_image_url} alt={p.title} className="h-14 w-11 shrink-0 rounded-md" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-white">{p.title}</div>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <PlatformBadge platform={p.platform} />
-                  <RegionTag region={p.region} />
+          {results.map((p, i) => {
+            const inStock = p.total_stock_count > 0 && p.lowest_price_cents > 0;
+            const hasDiscount = p.discount_percent > 0 && p.original_price_cents > p.lowest_price_cents;
+            const fuzzy = isFuzzyMatch(p.title, debounced);
+
+            return (
+              <Link
+                key={p.id}
+                to={`/product/${p.slug}`}
+                role="option"
+                aria-selected={i === active}
+                onClick={close}
+                onMouseEnter={() => setActive(i)}
+                className={`flex items-center gap-3 border-b border-white/5 px-3 py-2.5 last:border-b-0 transition ${
+                  i === active ? 'bg-eneba-cardHover' : 'hover:bg-eneba-cardHover/60'
+                }`}
+              >
+                <CoverImage src={p.cover_image_url} alt={p.title} className="h-16 w-12 shrink-0 rounded-md ring-1 ring-white/10" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-bold text-white">{p.title}</span>
+                    {fuzzy && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded bg-eneba-teal/15 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-eneba-teal ring-1 ring-inset ring-eneba-teal/35">
+                        <Sparkles className="h-2.5 w-2.5" aria-hidden />
+                        Fuzzy match
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <PlatformBadge platform={p.platform} />
+                    <RegionTag region={p.region} />
+                  </div>
                 </div>
-              </div>
-              <div className="shrink-0 text-right text-sm font-black text-white">
-                {p.total_stock_count > 0 ? formatPrice(p.lowest_price_cents) : <span className="text-xs text-eneba-muted">Sold out</span>}
-              </div>
-            </Link>
-          ))}
+                <div className="shrink-0 text-right">
+                  {inStock ? (
+                    <>
+                      {hasDiscount && (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span className="text-[11px] text-eneba-muted line-through">
+                            {formatPrice(p.original_price_cents)}
+                          </span>
+                          <DiscountPill percent={p.discount_percent} className="px-1.5 py-0 text-[10px]" />
+                        </div>
+                      )}
+                      <div className="mt-0.5 flex items-baseline justify-end gap-1 leading-none">
+                        <span className="text-[10px] font-semibold uppercase text-eneba-muted">From</span>
+                        <span className="text-sm font-black text-white">{formatPrice(p.lowest_price_cents)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-xs font-bold text-eneba-muted">Sold out</span>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
 
           {results.length === 0 && !loading && !pending && (
             <div className="px-4 py-5 text-center text-sm text-eneba-muted">No games found for “{debounced}”.</div>
@@ -186,9 +226,9 @@ export function SearchBar() {
             <Link
               to={`/store?q=${encodeURIComponent(debounced)}`}
               onClick={close}
-              className="block border-t border-white/10 bg-black/20 px-4 py-2.5 text-center text-sm font-bold text-eneba-yellow hover:bg-black/30"
+              className="block border-t border-white/10 bg-black/25 px-4 py-2.5 text-center text-sm font-bold text-eneba-yellow hover:bg-black/40"
             >
-              See all {total} result{total === 1 ? '' : 's'}
+              See all {total} result{total === 1 ? '' : 's'} for &apos;{debounced}&apos;
             </Link>
           )}
         </div>

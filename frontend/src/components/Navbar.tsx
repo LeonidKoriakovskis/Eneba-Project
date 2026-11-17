@@ -17,11 +17,12 @@ export function Logo() {
 }
 
 function CartButton() {
-  const { itemCount } = useCart();
+  const { itemCount, openDrawer } = useCart();
   return (
-    <Link
-      to="/cart"
-      aria-label={`Cart, ${itemCount} item${itemCount === 1 ? '' : 's'}`}
+    <button
+      type="button"
+      onClick={openDrawer}
+      aria-label={`Open cart, ${itemCount} item${itemCount === 1 ? '' : 's'}`}
       className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg bg-eneba-canvas/60 ring-1 ring-white/10 transition hover:bg-eneba-canvas focus:outline-none focus-visible:shadow-glow"
     >
       <ShoppingCart className="h-5 w-5" aria-hidden />
@@ -33,7 +34,7 @@ function CartButton() {
           {itemCount > 99 ? '99+' : itemCount}
         </span>
       )}
-    </Link>
+    </button>
   );
 }
 
