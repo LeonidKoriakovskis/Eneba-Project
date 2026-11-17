@@ -199,6 +199,89 @@ func TestProductsEndpoint_FilterAndSort(t *testing.T) {
 	}
 }
 
+func TestProductsEndpoint_MultiPlatformAndMultiRegionFilter(t *testing.T) {
+	router := setupTestRouter(t)
+
+	// Comma-separated case-insensitive platforms + repeated/comma regions
+	req := httptest.NewRequest(http.MethodGet, "/api/products?platform=steam,PSN&region=GLOBAL,EUROPE&sort=price_asc", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d. Body: %s", rec.Code, rec.Body.String())
+	}
+
+	var res models.ProductListResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if len(res.Products) == 0 {
+		t.Fatalf("Expected matching products for Steam/PSN + GLOBAL/EUROPE, got 0")
+	}
+
+	sawSteam := false
+	sawPSN := false
+	sawGlobal := false
+	sawEurope := false
+
+	for i, p := range res.Products {
+		switch p.Platform {
+		case "Steam":
+			sawSteam = true
+		case "PSN":
+			sawPSN = true
+		default:
+			t.Errorf("Unexpected platform %s for product %s", p.Platform, p.Title)
+		}
+
+		switch p.Region {
+		case "GLOBAL":
+			sawGlobal = true
+		case "EUROPE":
+			sawEurope = true
+		default:
+			t.Errorf("Unexpected region %s for product %s", p.Region, p.Title)
+		}
+
+		if i > 0 && p.LowestPriceCents < res.Products[i-1].LowestPriceCents {
+			t.Errorf("Products not sorted by price_asc: %d < %d", p.LowestPriceCents, res.Products[i-1].LowestPriceCents)
+		}
+	}
+
+	if !sawSteam || !sawPSN {
+		t.Errorf("Expected both Steam and PSN results (sawSteam=%v, sawPSN=%v)", sawSteam, sawPSN)
+	}
+	if !sawGlobal || !sawEurope {
+		t.Errorf("Expected both GLOBAL and EUROPE results (sawGlobal=%v, sawEurope=%v)", sawGlobal, sawEurope)
+	}
+
+	// Verify Nintendo alias matches 'Nintendo Switch' + repeated query params
+	nintendoReq := httptest.NewRequest(http.MethodGet, "/api/products?platform=Nintendo&platform=Xbox", nil)
+	nintendoRec := httptest.NewRecorder()
+	router.ServeHTTP(nintendoRec, nintendoReq)
+	if nintendoRec.Code != http.StatusOK {
+		t.Fatalf("Expected status 200 for Nintendo+Xbox query, got %d", nintendoRec.Code)
+	}
+	var nintendoRes models.ProductListResponse
+	_ = json.Unmarshal(nintendoRec.Body.Bytes(), &nintendoRes)
+	sawNintendoSwitch := false
+	sawXbox := false
+	for _, p := range nintendoRes.Products {
+		if p.Platform == "Nintendo Switch" {
+			sawNintendoSwitch = true
+		} else if p.Platform == "Xbox" {
+			sawXbox = true
+		} else {
+			t.Errorf("Unexpected platform %s in Nintendo+Xbox query", p.Platform)
+		}
+	}
+	if !sawNintendoSwitch || !sawXbox {
+		t.Errorf("Expected both Nintendo Switch and Xbox products (sawNintendoSwitch=%v, sawXbox=%v)", sawNintendoSwitch, sawXbox)
+	}
+}
+
 func TestProductBySlugEndpoint_DetailAndOffers(t *testing.T) {
 	router := setupTestRouter(t)
 

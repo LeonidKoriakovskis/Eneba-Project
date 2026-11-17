@@ -5,16 +5,55 @@ import { PlatformIcon } from '../PlatformBadge';
 
 export interface StoreFilters {
   q: string;
-  platform: string;
-  region: string;
+  platforms: string[];
+  regions: string[];
   minPrice: number | undefined; // cents
   maxPrice: number | undefined; // cents
 }
 
 export type FilterPatch = Partial<Record<'platform' | 'region' | 'min_price' | 'max_price', string | undefined>>;
 
-const PLATFORMS = ['Steam', 'PSN', 'Xbox', 'Nintendo'] as const;
-const REGIONS = ['GLOBAL', 'EUROPE', 'US'] as const;
+export const STORE_PLATFORMS = ['Steam', 'PSN', 'Xbox', 'Nintendo'] as const;
+export const STORE_REGIONS = ['GLOBAL', 'EUROPE', 'US'] as const;
+
+/** Parses repeated/comma-separated URL param values into deduplicated canonical pills. */
+export function parseMultiParam(values: string[], canonical: readonly string[]): string[] {
+  const byLower = new Map(canonical.map((item) => [item.toLowerCase(), item]));
+  const selected: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of values) {
+    for (const part of raw.split(',')) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      const mapped = byLower.get(trimmed.toLowerCase()) ?? trimmed;
+      const key = mapped.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      selected.push(mapped);
+    }
+  }
+  return selected;
+}
+
+/** Toggles a value inside a multi-select group, ordering along canonical options; empty array = ALL. */
+export function toggleMultiSelect(current: string[], value: string, canonical: readonly string[]): string[] {
+  const targetKey = value.toLowerCase();
+  const exists = current.some((item) => item.toLowerCase() === targetKey);
+  const nextSet = new Set(current.map((item) => item.toLowerCase()));
+
+  if (exists) {
+    nextSet.delete(targetKey);
+  } else {
+    nextSet.add(targetKey);
+  }
+
+  return canonical.filter((item) => nextSet.has(item.toLowerCase()));
+}
+
+export function serializeMultiParam(values: string[]): string | undefined {
+  return values.length > 0 ? values.join(',') : undefined;
+}
 
 function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -140,6 +179,16 @@ interface FilterSidebarProps {
 }
 
 export function FilterSidebar({ filters, activeCount, onChange, onClear, onClose }: FilterSidebarProps) {
+  const togglePlatform = (platform: string) => {
+    const next = toggleMultiSelect(filters.platforms, platform, STORE_PLATFORMS);
+    onChange({ platform: serializeMultiParam(next) });
+  };
+
+  const toggleRegion = (region: string) => {
+    const next = toggleMultiSelect(filters.regions, region, STORE_REGIONS);
+    onChange({ region: serializeMultiParam(next) });
+  };
+
   return (
     <aside aria-label="Filters" className="space-y-6 rounded-2xl bg-eneba-card p-5 ring-1 ring-white/10">
       <div className="flex items-center justify-between">
@@ -152,33 +201,43 @@ export function FilterSidebar({ filters, activeCount, onChange, onClear, onClose
       </div>
 
       <fieldset>
-        <legend className="mb-2.5 text-xs font-extrabold uppercase tracking-widest text-eneba-muted">Platform</legend>
+        <legend className="mb-2.5 text-xs font-extrabold uppercase tracking-widest text-eneba-muted">
+          Platform {filters.platforms.length > 0 && <span className="text-eneba-yellow">({filters.platforms.length})</span>}
+        </legend>
         <div className="flex flex-wrap gap-2">
-          <Pill active={!filters.platform} onClick={() => onChange({ platform: undefined })}>
+          <Pill active={filters.platforms.length === 0} onClick={() => onChange({ platform: undefined })}>
             All
           </Pill>
-          {PLATFORMS.map((p) => (
-            <Pill key={p} active={filters.platform === p} onClick={() => onChange({ platform: p })}>
-              <span className="inline-flex items-center gap-1.5">
-                <PlatformIcon platform={p} className="h-3.5 w-3.5" />
-                {p}
-              </span>
-            </Pill>
-          ))}
+          {STORE_PLATFORMS.map((p) => {
+            const active = filters.platforms.some((sel) => sel.toLowerCase() === p.toLowerCase());
+            return (
+              <Pill key={p} active={active} onClick={() => togglePlatform(p)}>
+                <span className="inline-flex items-center gap-1.5">
+                  <PlatformIcon platform={p} className="h-3.5 w-3.5" />
+                  {p}
+                </span>
+              </Pill>
+            );
+          })}
         </div>
       </fieldset>
 
       <fieldset>
-        <legend className="mb-2.5 text-xs font-extrabold uppercase tracking-widest text-eneba-muted">Region</legend>
+        <legend className="mb-2.5 text-xs font-extrabold uppercase tracking-widest text-eneba-muted">
+          Region {filters.regions.length > 0 && <span className="text-eneba-yellow">({filters.regions.length})</span>}
+        </legend>
         <div className="flex flex-wrap gap-2">
-          <Pill active={!filters.region} onClick={() => onChange({ region: undefined })}>
+          <Pill active={filters.regions.length === 0} onClick={() => onChange({ region: undefined })}>
             All
           </Pill>
-          {REGIONS.map((r) => (
-            <Pill key={r} active={filters.region === r} onClick={() => onChange({ region: r })}>
-              {r}
-            </Pill>
-          ))}
+          {STORE_REGIONS.map((r) => {
+            const active = filters.regions.some((sel) => sel.toLowerCase() === r.toLowerCase());
+            return (
+              <Pill key={r} active={active} onClick={() => toggleRegion(r)}>
+                {r}
+              </Pill>
+            );
+          })}
         </div>
       </fieldset>
 

@@ -132,15 +132,17 @@ func (r *CatalogRepository) ListProducts(ctx context.Context, params models.Prod
 		relevanceSelect = "0.0 AS relevance_score,"
 	}
 
-	if params.Platform != "" {
-		whereConditions = append(whereConditions, fmt.Sprintf("p.platform ILIKE '%%' || $%d || '%%'", argIdx))
-		args = append(args, params.Platform)
+	platforms := normalizePlatformFilters(params.Platforms, params.Platform)
+	if len(platforms) > 0 {
+		whereConditions = append(whereConditions, fmt.Sprintf("LOWER(p.platform) = ANY($%d)", argIdx))
+		args = append(args, platforms)
 		argIdx++
 	}
 
-	if params.Region != "" {
-		whereConditions = append(whereConditions, fmt.Sprintf("p.region = $%d", argIdx))
-		args = append(args, params.Region)
+	regions := normalizeRegionFilters(params.Regions, params.Region)
+	if len(regions) > 0 {
+		whereConditions = append(whereConditions, fmt.Sprintf("LOWER(p.region) = ANY($%d)", argIdx))
+		args = append(args, regions)
 		argIdx++
 	}
 
@@ -444,4 +446,63 @@ func (r *CatalogRepository) SyncHeroBannerImages(ctx context.Context, blockID st
 	}
 	_, err = r.pool.Exec(ctx, `UPDATE homepage_blocks SET config = $1, updated_at = NOW() WHERE id = $2`, updated, blockID)
 	return err
+}
+
+
+func normalizePlatformFilters(platforms []string, single string) []string {
+	var raw []string
+	raw = append(raw, platforms...)
+	if strings.TrimSpace(single) != "" {
+		raw = append(raw, strings.Split(single, ",")...)
+	}
+
+	seen := make(map[string]struct{})
+	var normalized []string
+	add := func(v string) {
+		if _, exists := seen[v]; !exists {
+			seen[v] = struct{}{}
+			normalized = append(normalized, v)
+		}
+	}
+
+	for _, item := range raw {
+		val := strings.ToLower(strings.TrimSpace(item))
+		if val == "" {
+			continue
+		}
+		add(val)
+		switch val {
+		case "nintendo":
+			add("nintendo switch")
+		case "nintendo switch":
+			add("nintendo")
+		case "playstation":
+			add("psn")
+		case "psn":
+			add("playstation")
+		}
+	}
+	return normalized
+}
+
+func normalizeRegionFilters(regions []string, single string) []string {
+	var raw []string
+	raw = append(raw, regions...)
+	if strings.TrimSpace(single) != "" {
+		raw = append(raw, strings.Split(single, ",")...)
+	}
+
+	seen := make(map[string]struct{})
+	var normalized []string
+	for _, item := range raw {
+		val := strings.ToLower(strings.TrimSpace(item))
+		if val == "" {
+			continue
+		}
+		if _, exists := seen[val]; !exists {
+			seen[val] = struct{}{}
+			normalized = append(normalized, val)
+		}
+	}
+	return normalized
 }

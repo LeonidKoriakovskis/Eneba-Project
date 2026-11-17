@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, SearchX, SlidersHorizontal, X } from 'lucide-react';
-import { api, errorMessage } from '../api/client';
+import { fetchProducts, errorMessage } from '../api/client';
 import type { ProductListResponse, SortOption } from '../types/api';
 import { useDocumentTitle } from '../utils/hooks';
 import { formatPrice } from '../utils/format';
 import { ErrorState } from '../components/ErrorState';
 import { ProductCard, ProductCardSkeleton } from '../components/ProductCard';
-import { FilterSidebar, type FilterPatch, type StoreFilters } from '../components/store/FilterSidebar';
+import {
+  FilterSidebar,
+  STORE_PLATFORMS,
+  STORE_REGIONS,
+  parseMultiParam,
+  serializeMultiParam,
+  toggleMultiSelect,
+  type FilterPatch,
+  type StoreFilters,
+} from '../components/store/FilterSidebar';
 
 const PAGE_SIZE = 20;
 
@@ -37,8 +46,8 @@ export default function StorePage() {
   const filters = useMemo<StoreFilters>(
     () => ({
       q: sp.get('q')?.trim() ?? '',
-      platform: sp.get('platform') ?? '',
-      region: sp.get('region') ?? '',
+      platforms: parseMultiParam(sp.getAll('platform'), STORE_PLATFORMS),
+      regions: parseMultiParam(sp.getAll('region'), STORE_REGIONS),
       minPrice: intParam(sp, 'min_price'),
       maxPrice: intParam(sp, 'max_price'),
     }),
@@ -58,20 +67,19 @@ export default function StorePage() {
   useEffect(() => {
     const ctrl = new AbortController();
     setState((prev) => ({ status: 'loading', data: prev.data }));
-    api
-      .listProducts(
-        {
-          q: filters.q || undefined,
-          platform: filters.platform || undefined,
-          region: filters.region || undefined,
-          min_price: filters.minPrice,
-          max_price: filters.maxPrice,
-          sort,
-          limit: PAGE_SIZE,
-          offset: (page - 1) * PAGE_SIZE,
-        },
-        ctrl.signal,
-      )
+    fetchProducts(
+      {
+        q: filters.q || undefined,
+        platform: filters.platforms,
+        region: filters.regions,
+        min_price: filters.minPrice,
+        max_price: filters.maxPrice,
+        sort,
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
+      },
+      ctrl.signal,
+    )
       .then((data) => setState({ status: 'ready', data }))
       .catch((err: unknown) => {
         if (ctrl.signal.aborted) return;
@@ -99,6 +107,22 @@ export default function StorePage() {
 
   const onFilterChange = useCallback((patch: FilterPatch) => update(patch), [update]);
 
+  const removePlatform = useCallback(
+    (p: string) => {
+      const next = toggleMultiSelect(filters.platforms, p, STORE_PLATFORMS);
+      update({ platform: serializeMultiParam(next) });
+    },
+    [filters.platforms, update],
+  );
+
+  const removeRegion = useCallback(
+    (r: string) => {
+      const next = toggleMultiSelect(filters.regions, r, STORE_REGIONS);
+      update({ region: serializeMultiParam(next) });
+    },
+    [filters.regions, update],
+  );
+
   const clearFilters = useCallback(() => {
     setSp((prev) => {
       const next = new URLSearchParams();
@@ -111,7 +135,10 @@ export default function StorePage() {
   }, [setSp]);
 
   const activeCount =
-    (filters.platform ? 1 : 0) + (filters.region ? 1 : 0) + (filters.minPrice !== undefined ? 1 : 0) + (filters.maxPrice !== undefined ? 1 : 0);
+    filters.platforms.length +
+    filters.regions.length +
+    (filters.minPrice !== undefined ? 1 : 0) +
+    (filters.maxPrice !== undefined ? 1 : 0);
 
   const products = state.data?.products ?? [];
   const total = state.data?.total_count ?? 0;
@@ -161,10 +188,12 @@ export default function StorePage() {
                   </button>
                 </span>
               )}
-              {filters.platform && (
-                <FilterChip label={filters.platform} onRemove={() => update({ platform: undefined })} />
-              )}
-              {filters.region && <FilterChip label={filters.region} onRemove={() => update({ region: undefined })} />}
+              {filters.platforms.map((p) => (
+                <FilterChip key={`platform-${p}`} label={p} onRemove={() => removePlatform(p)} />
+              ))}
+              {filters.regions.map((r) => (
+                <FilterChip key={`region-${r}`} label={r} onRemove={() => removeRegion(r)} />
+              ))}
               {filters.minPrice !== undefined && (
                 <FilterChip label={`≥ ${formatPrice(filters.minPrice)}`} onRemove={() => update({ min_price: undefined })} />
               )}

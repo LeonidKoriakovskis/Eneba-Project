@@ -56,8 +56,8 @@ export interface ProductListResponse {
 
 export interface ProductQuery {
   q?: string;
-  platform?: string;
-  region?: string;
+  platform?: string | string[];
+  region?: string | string[];
   genre?: string;
   min_price?: number; // cents
   max_price?: number; // cents

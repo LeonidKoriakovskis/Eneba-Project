@@ -76,6 +76,11 @@ function toQueryString(query: ProductQuery): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === '') continue;
+    if (Array.isArray(value)) {
+      const cleaned = value.map((v) => v.trim()).filter(Boolean);
+      if (cleaned.length > 0) params.set(key, cleaned.join(','));
+      continue;
+    }
     params.set(key, String(value));
   }
   const qs = params.toString();
@@ -102,6 +107,8 @@ export const api = {
 
   listOrders: (token: string, signal?: AbortSignal) => request<OrdersResponse>('/api/orders', { token, signal }),
 };
+
+export const fetchProducts = api.listProducts;
 
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong';

@@ -132,7 +132,9 @@ type HydratedHomepageBlock struct {
 type ProductFilterParams struct {
 	Query         string
 	Platform      string
+	Platforms     []string
 	Region        string
+	Regions       []string
 	Genre         string
 	MinPriceCents *int
 	MaxPriceCents *int

@@ -820,3 +820,46 @@ Verify `npm test` and `npm run build` both pass with zero errors, and stop so we
 ### 3. Verification Results
 - `npm test` (`frontend/tests/purchaseFlow.test.mjs`): **9/9 tests passed** (`289.70ms`).
 - `npm run build` (`tsc -b && vite build`): exited with code `0` (`1627 modules transformed`, `dist/assets/index-BM4vmi7n.css 39.45 kB`, `dist/assets/index-CIWIQSMC.js 292.66 kB`, built in `5.04s`).
+
+
+---
+
+## Turn 13: Multi-Select Platform & Region Store Filtering (Full-Stack)
+
+### 1. User Prompt
+```text
+Let's upgrade the Store catalog's Platform AND Region filters from single-select to multi-select so buyers can filter across multiple platforms and multiple regions simultaneously (e.g., selecting STEAM + PSN and GLOBAL + EUROPE at once). Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Make these full-stack updates:
+
+1. GO BACKEND (`GET /api/products` in `backend/internal/repository` & `handlers`):
+   - Support comma-separated (and repeated) values for both `platform` and `region` query parameters (e.g., `?platform=Steam,PSN&region=GLOBAL,EUROPE`).
+   - Normalize and match case-insensitively using PostgreSQL `LOWER(p.platform) = ANY($...)` and `LOWER(p.region) = ANY($...)` so selecting multiple platforms and/or regions returns matching products while combining cleanly with `q`, `min_price`, `max_price`, and `sort`.
+   - Update/add integration test cases in `backend/internal/handlers/catalog_test.go` verifying multi-platform and multi-region filtering.
+
+2. REACT FRONTEND (`frontend/src/pages/StorePage.tsx` & `src/api/client.ts`):
+   - Update both the Platform and Region filter states and URL search params (`?platform=Steam,PSN&region=GLOBAL,EUROPE`) to support toggling multiple pills on/off simultaneously:
+     - Clicking `ALL` in either group clears specific selections for that filter group.
+     - Clicking individual pills (`STEAM`, `PSN`, `XBOX`, `NINTENDO` or `GLOBAL`, `EUROPE`, `US`) toggles them in or out of that group's active selection (highlighting all selected pills in yellow `#FFDC00`).
+     - Deselecting the last active pill in either group automatically resets that group to `ALL`.
+   - Update `fetchProducts` in `src/api/client.ts` to serialize selected platforms and regions cleanly.
+
+Verify `go test -v ./...`, `npm test`, and `npm run build` all pass with zero errors.
+```
+
+### 2. Summary of Changes
+1. **Go Backend Multi-Value Filtering**:
+   - Added `Platforms []string` and `Regions []string` to `models.ProductFilterParams` (`backend/internal/models/models.go`).
+   - Added `parseMultiQueryParam` in `backend/internal/handlers/catalog.go` supporting both comma-separated (`?platform=Steam,PSN&region=GLOBAL,EUROPE`) and repeated (`?platform=Nintendo&platform=Xbox`) parameters.
+   - Added `normalizePlatformFilters` (case-insensitive normalization + `"nintendo"`/`"nintendo switch"` and `"playstation"`/`"psn"` aliasing) and `normalizeRegionFilters` in `backend/internal/repository/catalog.go`, matching via `LOWER(p.platform) = ANY($...)` and `LOWER(p.region) = ANY($...)`.
+   - Added `TestProductsEndpoint_MultiPlatformAndMultiRegionFilter` in `backend/internal/handlers/catalog_test.go`.
+2. **React Frontend Multi-Select Filters & API Serialization**:
+   - Updated `ProductQuery` (`frontend/src/types/api.ts`) and `toQueryString` + exported `fetchProducts` (`frontend/src/api/client.ts`) to serialize string arrays as comma-separated query parameters (`?platform=Steam,PSN&region=GLOBAL,EUROPE`).
+   - Updated `StoreFilters`, `FilterSidebar`, `parseMultiParam`, `toggleMultiSelect`, and `serializeMultiParam` (`frontend/src/components/store/FilterSidebar.tsx`) so clicking `All` clears that group, clicking pills toggles them in/out with active `#FFDC00` (`bg-eneba-yellow text-eneba-ink`) styling, and deselecting the last active pill resets the group to `All`.
+   - Updated `frontend/src/pages/StorePage.tsx` to sync multi-select URL params and render individual removable filter chips for every active platform and region.
+   - Added 2 new frontend tests (`frontend/tests/purchaseFlow.test.mjs`, `frontend/scripts/run-tests.mjs`) covering multi-select helpers and `StorePage` rendering.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...`: **12/12 tests passed** (`ok eneba-marketplace/backend/internal/handlers 2.607s`).
+- `npm test` (frontend): **11/11 tests passed** (`221.31ms`).
+- `npm run build` (`tsc -b && vite build`): exited with code `0` (`1627 modules transformed`, `dist/assets/index-BM4vmi7n.css 39.45 kB`, `dist/assets/index-BbsNp6uR.js 293.90 kB`, built in `4.43s`).

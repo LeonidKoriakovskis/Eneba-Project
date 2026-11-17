@@ -18,6 +18,14 @@ export { sanitizeRedirect, formatPrice, formatDateTime } from '../../src/utils/f
 export { OrderKeyCard } from '../../src/components/orders/OrderKeyCard.tsx';
 export { CartDrawer } from '../../src/components/CartDrawer.tsx';
 export { isFuzzyMatch } from '../../src/components/SearchBar.tsx';
+export {
+  STORE_PLATFORMS,
+  STORE_REGIONS,
+  parseMultiParam,
+  serializeMultiParam,
+  toggleMultiSelect,
+} from '../../src/components/store/FilterSidebar.tsx';
+export { default as StorePage } from '../../src/pages/StorePage.tsx';
 export { default as CartPage } from '../../src/pages/CartPage.tsx';
 export { default as AuthPage } from '../../src/pages/AuthPage.tsx';
 export { default as CheckoutPage } from '../../src/pages/CheckoutPage.tsx';

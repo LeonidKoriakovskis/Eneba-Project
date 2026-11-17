@@ -36,39 +36,62 @@ func (h *CatalogHandler) HandleGetHomepage(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+// parseMultiQueryParam parses both repeated (?platform=Steam&platform=PSN) and
+// comma-separated (?platform=Steam,PSN) query values into deduplicated entries.
+func parseMultiQueryParam(values []string) []string {
+	seen := make(map[string]struct{})
+	var out []string
+	for _, raw := range values {
+		for _, part := range strings.Split(raw, ",") {
+			trimmed := strings.TrimSpace(part)
+			if trimmed == "" {
+				continue
+			}
+			key := strings.ToLower(trimmed)
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
 // HandleListProducts serves GET /api/products
 func (h *CatalogHandler) HandleListProducts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	platform := strings.TrimSpace(r.URL.Query().Get("platform"))
-	region := strings.TrimSpace(r.URL.Query().Get("region"))
-	genre := strings.TrimSpace(r.URL.Query().Get("genre"))
-	sort := strings.TrimSpace(r.URL.Query().Get("sort"))
+	query := r.URL.Query()
+	q := strings.TrimSpace(query.Get("q"))
+	platforms := parseMultiQueryParam(query["platform"])
+	regions := parseMultiQueryParam(query["region"])
+	genre := strings.TrimSpace(query.Get("genre"))
+	sort := strings.TrimSpace(query.Get("sort"))
 
 	var minPrice *int
-	if minStr := r.URL.Query().Get("min_price"); minStr != "" {
+	if minStr := query.Get("min_price"); minStr != "" {
 		if val, err := strconv.Atoi(minStr); err == nil && val >= 0 {
 			minPrice = &val
 		}
 	}
 
 	var maxPrice *int
-	if maxStr := r.URL.Query().Get("max_price"); maxStr != "" {
+	if maxStr := query.Get("max_price"); maxStr != "" {
 		if val, err := strconv.Atoi(maxStr); err == nil && val >= 0 {
 			maxPrice = &val
 		}
 	}
 
 	limit := 20
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+	if limitStr := query.Get("limit"); limitStr != "" {
 		if val, err := strconv.Atoi(limitStr); err == nil && val > 0 && val <= 100 {
 			limit = val
 		}
 	}
 
 	offset := 0
-	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+	if offsetStr := query.Get("offset"); offsetStr != "" {
 		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
 			offset = val
 		}
@@ -76,8 +99,8 @@ func (h *CatalogHandler) HandleListProducts(w http.ResponseWriter, r *http.Reque
 
 	params := models.ProductFilterParams{
 		Query:         q,
-		Platform:      platform,
-		Region:        region,
+		Platforms:     platforms,
+		Regions:       regions,
 		Genre:         genre,
 		MinPriceCents: minPrice,
 		MaxPriceCents: maxPrice,

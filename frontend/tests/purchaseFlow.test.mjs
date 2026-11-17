@@ -19,10 +19,16 @@ const {
   OrdersPage,
   Route,
   Routes,
+  STORE_PLATFORMS,
+  STORE_REGIONS,
+  StorePage,
   AuthPage,
   cartReducer,
   isFuzzyMatch,
+  parseMultiParam,
   sanitizeRedirect,
+  serializeMultiParam,
+  toggleMultiSelect,
 } = require('../.vite-temp/tests/bundle.cjs');
 
 function makeStorage() {
@@ -241,4 +247,42 @@ test('OrderKeyCard renders Verify / Test Redeem trigger and platform redemption 
   assert.match(modalHtml, /Steam Client Product Activation/);
   assert.match(modalHtml, /CP77-PV01-9X82/);
   assert.match(modalHtml, /Key Verified &amp; Activated on Account/);
+});
+
+
+test('multi-select platform and region helpers toggle, serialize, and reset to ALL when emptied', () => {
+  const initial = parseMultiParam(['Steam,PSN'], STORE_PLATFORMS);
+  assert.deepEqual(initial, ['Steam', 'PSN']);
+
+  const added = toggleMultiSelect(initial, 'Xbox', STORE_PLATFORMS);
+  assert.deepEqual(added, ['Steam', 'PSN', 'Xbox']);
+  assert.equal(serializeMultiParam(added), 'Steam,PSN,Xbox');
+
+  const removedOne = toggleMultiSelect(added, 'PSN', STORE_PLATFORMS);
+  assert.deepEqual(removedOne, ['Steam', 'Xbox']);
+
+  // Deselecting last remaining pill resets group to empty (ALL)
+  const single = toggleMultiSelect(['Steam'], 'Steam', STORE_PLATFORMS);
+  assert.deepEqual(single, []);
+  assert.equal(serializeMultiParam(single), undefined);
+
+  const regions = parseMultiParam(['global,EUROPE', 'europe'], STORE_REGIONS);
+  assert.deepEqual(regions, ['GLOBAL', 'EUROPE']);
+});
+
+test('StorePage renders multi-select yellow pills and removable chips for multiple platforms & regions', () => {
+  const html = renderWithProviders(
+    React.createElement(StorePage),
+    ['/store?platform=Steam,PSN&region=GLOBAL,EUROPE'],
+  );
+  assert.match(html, /aria-pressed="true"[^>]*>.*?Steam/s);
+  assert.match(html, /aria-pressed="true"[^>]*>.*?PSN/s);
+  assert.match(html, /aria-pressed="false"[^>]*>.*?Xbox/s);
+  assert.match(html, /aria-pressed="true"[^>]*>GLOBAL<\/button>/);
+  assert.match(html, /aria-pressed="true"[^>]*>EUROPE<\/button>/);
+  assert.match(html, /Remove Steam filter/);
+  assert.match(html, /Remove PSN filter/);
+  assert.match(html, /Remove GLOBAL filter/);
+  assert.match(html, /Remove EUROPE filter/);
+  assert.match(html, /Clear All Filters \(4\)/);
 });
