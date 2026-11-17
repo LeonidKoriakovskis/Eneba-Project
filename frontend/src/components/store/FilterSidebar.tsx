@@ -114,7 +114,7 @@ function PriceFilter({
   const invalidRange = lo !== undefined && hi !== undefined && lo > hi;
 
   const inputClass =
-    'w-full rounded-lg bg-eneba-canvas/70 py-2 pl-7 pr-2 text-sm font-semibold text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
+    'no-spinner w-full rounded-lg bg-eneba-canvas/70 py-2 pl-7 pr-2 text-sm font-semibold text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
 
   return (
     <div>

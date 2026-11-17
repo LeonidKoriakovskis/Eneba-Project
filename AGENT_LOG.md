@@ -895,3 +895,46 @@ Verify `npm test` and `npm run build` pass with zero errors.
 ### 3. Verification Results
 - `npm test` (`frontend/tests/purchaseFlow.test.mjs`): **12/12 tests passed** (`317.71ms`).
 - `npm run build` (`tsc -b && vite build`): exited with code `0` (`1628 modules transformed`, `dist/assets/index-Cmi2eMkG.css 39.55 kB`, `dist/assets/index-HQ6EHaHE.js 296.04 kB`, built in `4.56s`).
+
+
+---
+
+## Turn 15: Custom Sort Dropdown, Clean Price Inputs & Authentic Eneba Product Card Hover Slide-Up
+
+### 1. User Prompt
+```text
+Let's apply three signature Eneba UI polish upgrades to the Store filters and Product Cards. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`:
+
+1. CUSTOM STYLED "SORT BY" DROPDOWN (`frontend/src/components/CustomSelect.tsx` & `StorePage.tsx`):
+   - Replace the native browser `<select>` element in the Store sort bar with a custom, accessible React dropdown component styled in our Eneba violet theme (`#1F0A4D` / `#37128A` surface, subtle purple border, `#FFDC00` active indicator + checkmark, smooth open/close transition, Escape-key and outside-click dismissal) so there is no default OS blue `<option>` highlight.
+
+2. CLEAN PRICE RANGE NUMBER INPUTS (`frontend/src/index.css` & `StorePage.tsx`):
+   - Remove the default browser up/down number spinner arrows (`-webkit-inner-spin-button`, `-webkit-outer-spin-button`, `-moz-appearance: textfield`) on the `€ Min` and `€ Max` price inputs so they look sleek and modern.
+
+3. AUTHENTIC ENEBA PRODUCT CARD HOVER SLIDE-UP ANIMATION (`frontend/src/components/ProductCard.tsx`):
+   - Model the product card layout and hover interaction directly after Eneba's live storefront cards:
+     - **Cover Art & Platform Strip:** Vertical box art with a sleek dark translucent bottom bar displaying the platform icon + name (`Steam`, `PSN`, `Xbox`, `Nintendo`) centered across the bottom edge of the artwork, plus a subtle top-right wishlist/heart icon on hover.
+     - **Card Body:** Bold game title (2-line clamp), bold uppercase teal region label (`GLOBAL`, `EUROPE`, `US`), strikethrough original price + green/orange `-XX%` discount inline on the same line, and bold white starting price (`From €XX.XX`).
+     - **Smooth Hover Slide-Up Action Panel:** Keep the card at a fixed height (`overflow-hidden`) and, on card hover/focus-within, smoothly translate (`transition-transform duration-300 ease-out`) the lower info & action panel upward to reveal two full-width buttons underneath the price:
+       1. Primary solid yellow **`Add to Cart`** button (`bg-[#FFDC00] text-[#1F0A4D] font-extrabold`) that adds the lowest-priced available seller offer directly to the cart (and opens the Cart Drawer),
+       2. Secondary outlined **`View Offers`** button (`border border-white/30 text-white hover:border-[#FFDC00]`) linking to `/product/:slug`.
+
+Verify `npm test` and `npm run build` pass with zero errors, and stop so I can inspect the animations in the browser.
+```
+
+### 2. Summary of Changes
+1. **Custom Eneba Violet Sort Dropdown (`frontend/src/components/CustomSelect.tsx`, `frontend/src/pages/StorePage.tsx`)**:
+   - Created `CustomSelect` using ARIA `combobox` / `listbox` / `option` semantics with `#1F0A4D` / `#37128A` Eneba violet surfaces, subtle border styling, `#FFDC00` active text and `Check` indicator, rotating chevron, `transition-all duration-150 ease-out` open/close animation, keyboard navigation (`ArrowDown`/`ArrowUp`/`Enter`/`Space`/`Escape`), and outside-click dismissal.
+   - Replaced the native `<select>` in `StorePage.tsx` with `<CustomSelect ariaLabel="Sort by" ... />`.
+2. **Clean Price Range Number Inputs (`frontend/src/index.css`, `frontend/src/components/store/FilterSidebar.tsx`)**:
+   - Added `-webkit-inner-spin-button` / `-webkit-outer-spin-button` removal and `-moz-appearance: textfield` rules in `frontend/src/index.css` and applied the `no-spinner` class to both `€ Min` and `€ Max` inputs in `FilterSidebar.tsx`.
+3. **Eneba Product Card Hover Slide-Up (`frontend/src/components/ProductCard.tsx`)**:
+   - Upgraded `ProductCard` to a fixed-height (`h-[380px] overflow-hidden`) layout with vertical cover art (`h-[236px]`), top-right hover/toggleable wishlist heart button, and a dark translucent centered bottom strip showing the platform icon + name (`Steam`, `PSN`, `Xbox`, `Nintendo`).
+   - Updated the lower card body to display a 2-line clamped bold title, bold uppercase teal region label (`GLOBAL`, `EUROPE`, `US`), strikethrough original price + inline `<DiscountPill />` on one line, and bold white `From €XX.XX` pricing.
+   - Added a `duration-300 ease-out` hover/`focus-within` slide-up transition (`-translate-y-[92px]`) revealing a full-width solid yellow **`Add to Cart`** button (fetching and adding the lowest-priced in-stock seller offer directly via `api.getProduct` and opening the Cart Drawer) and an outlined **`View Offers`** button linking to `/product/:slug`. Updated `ProductCardSkeleton` dimensions to match cleanly.
+4. **Automated Tests (`frontend/scripts/run-tests.mjs`, `frontend/tests/purchaseFlow.test.mjs`)**:
+   - Exported `CustomSelect` and `ProductCard` in `run-tests.mjs`, verified `StorePage` uses `<CustomSelect>` + `no-spinner` inputs without `<select>`, and added unit/SSR tests covering `CustomSelect` listbox states and `ProductCard` slide-up action rendering.
+
+### 3. Verification Results
+- `npm --prefix "Eneba Project/frontend" test`: **13/13 tests passed** (`232.83ms`).
+- `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1629 modules transformed`, `dist/assets/index-DImV7tsi.css 44.36 kB`, `dist/assets/index-BysCpDS-.js 302.68 kB`, built in `4.61s`).

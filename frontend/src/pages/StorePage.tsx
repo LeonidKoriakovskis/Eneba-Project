@@ -6,6 +6,7 @@ import type { ProductListResponse, SortOption } from '../types/api';
 import { useDocumentTitle } from '../utils/hooks';
 import { formatPrice } from '../utils/format';
 import { ErrorState } from '../components/ErrorState';
+import { CustomSelect } from '../components/CustomSelect';
 import { ProductCard, ProductCardSkeleton } from '../components/ProductCard';
 import {
   FilterSidebar,
@@ -202,20 +203,15 @@ export default function StorePage() {
               )}
             </div>
 
-            <label className="ml-auto flex items-center gap-2 text-sm">
+            <div className="ml-auto flex items-center gap-2.5 text-sm">
               <span className="font-semibold text-eneba-muted">Sort by</span>
-              <select
+              <CustomSelect
+                ariaLabel="Sort by"
                 value={sort}
-                onChange={(e) => update({ sort: e.target.value === 'popular' ? undefined : e.target.value })}
-                className="rounded-lg bg-eneba-canvas py-2 pl-3 pr-8 text-sm font-bold text-white ring-1 ring-inset ring-white/15 focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={SORT_OPTIONS}
+                onChange={(nextSort) => update({ sort: nextSort === 'popular' ? undefined : nextSort })}
+              />
+            </div>
           </div>
 
           {state.status === 'error' && !state.data && (

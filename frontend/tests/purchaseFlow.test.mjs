@@ -12,11 +12,13 @@ const {
   CartPage,
   CartProvider,
   CheckoutPage,
+  CustomSelect,
   MAX_QTY_PER_OFFER,
   MemoryRouter,
   OrderDetailPage,
   OrderKeyCard,
   OrdersPage,
+  ProductCard,
   Route,
   Routes,
   STORE_PLATFORMS,
@@ -286,6 +288,9 @@ test('StorePage renders multi-select yellow pills and removable chips for multip
   assert.match(html, /Remove GLOBAL filter/);
   assert.match(html, /Remove EUROPE filter/);
   assert.match(html, /Clear All Filters \(4\)/);
+  assert.match(html, /role="combobox"[^>]*aria-label="Sort by"/);
+  assert.doesNotMatch(html, /<select[\s>]/);
+  assert.match(html, /class="[^"]*no-spinner[^"]*"/);
 });
 
 test('AuthPage renders Show password toggles, Confirm Password on register, and validates matching passwords', () => {
@@ -323,4 +328,69 @@ test('AuthPage renders Show password toggles, Confirm Password on register, and 
     }),
     'Passwords do not match',
   );
+});
+
+test('CustomSelect renders accessible violet listbox and ProductCard renders platform strip, teal region, inline discount, and slide-up buttons', () => {
+  const closedSelectHtml = renderToStaticMarkup(
+    React.createElement(CustomSelect, {
+      ariaLabel: 'Sort by',
+      value: 'price_asc',
+      options: [
+        { value: 'popular', label: 'Most Popular' },
+        { value: 'price_asc', label: 'Price: Low to High' },
+      ],
+      onChange: () => {},
+    }),
+  );
+  assert.match(closedSelectHtml, /role="combobox"/);
+  assert.match(closedSelectHtml, /aria-expanded="false"/);
+  assert.match(closedSelectHtml, /Price: Low to High/);
+
+  const openSelectHtml = renderToStaticMarkup(
+    React.createElement(CustomSelect, {
+      ariaLabel: 'Sort by',
+      value: 'price_asc',
+      defaultOpen: true,
+      options: [
+        { value: 'popular', label: 'Most Popular' },
+        { value: 'price_asc', label: 'Price: Low to High' },
+      ],
+      onChange: () => {},
+    }),
+  );
+  assert.match(openSelectHtml, /role="listbox"/);
+  assert.match(openSelectHtml, /role="option"[^>]*aria-selected="true"[^>]*>.*?Price: Low to High/);
+  assert.match(openSelectHtml, /text-\[#FFDC00\]/);
+
+  const cardHtml = renderWithProviders(
+    React.createElement(ProductCard, {
+      product: {
+        id: '11111111-0000-0000-0000-000000000001',
+        title: 'Cyberpunk 2077: Phantom Liberty Bundle',
+        slug: 'cyberpunk-2077-phantom-liberty-bundle',
+        description: 'Open-world RPG',
+        cover_image_url: 'https://example.com/cp77.jpg',
+        platform: 'Steam',
+        region: 'GLOBAL',
+        genre: 'Action RPG',
+        release_date: '2020-12-10',
+        lowest_price_cents: 2899,
+        original_price_cents: 5999,
+        discount_percent: 52,
+        best_seller_name: 'PixelVault Deals',
+        best_seller_rating: 4.9,
+        total_stock_count: 5,
+        total_offers_count: 3,
+      },
+    }),
+  );
+  assert.match(cardHtml, /aria-label="Add to wishlist"/);
+  assert.match(cardHtml, /Steam/);
+  assert.match(cardHtml, /GLOBAL/);
+  assert.match(cardHtml, /€59\.99/);
+  assert.match(cardHtml, /-52%/);
+  assert.match(cardHtml, /€28\.99/);
+  assert.match(cardHtml, /Add to Cart/);
+  assert.match(cardHtml, /View Offers/);
+  assert.match(cardHtml, /href="\/product\/cyberpunk-2077-phantom-liberty-bundle"/);
 });

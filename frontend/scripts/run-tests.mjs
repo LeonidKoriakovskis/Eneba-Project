@@ -17,6 +17,8 @@ export { AuthProvider } from '../../src/context/AuthContext.tsx';
 export { sanitizeRedirect, formatPrice, formatDateTime } from '../../src/utils/format.ts';
 export { OrderKeyCard } from '../../src/components/orders/OrderKeyCard.tsx';
 export { CartDrawer } from '../../src/components/CartDrawer.tsx';
+export { CustomSelect } from '../../src/components/CustomSelect.tsx';
+export { ProductCard } from '../../src/components/ProductCard.tsx';
 export { isFuzzyMatch } from '../../src/components/SearchBar.tsx';
 export {
   STORE_PLATFORMS,

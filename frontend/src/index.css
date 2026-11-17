@@ -44,6 +44,21 @@ body {
   }
 }
 
+/* Remove native browser number input spinners (e.g. Store € Min / € Max inputs) */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'],
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @layer components {
   .btn-yellow {
     @apply inline-flex items-center justify-center gap-2 rounded-lg bg-eneba-yellow px-5 py-2.5 text-sm font-extrabold text-eneba-ink transition hover:bg-eneba-yellowHover focus:outline-none focus-visible:shadow-glow disabled:cursor-not-allowed disabled:opacity-50;
