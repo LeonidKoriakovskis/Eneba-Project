@@ -40,6 +40,9 @@ func setupTestRouter(t *testing.T) *chi.Mux {
 
 	catalogRepo := repository.NewCatalogRepository(database.Pool)
 	catalogService := services.NewCatalogService(catalogRepo)
+	if err := catalogService.EnsureCatalogArtwork(ctx); err != nil {
+		t.Fatalf("Failed to sync catalog artwork: %v", err)
+	}
 	catalogHandler := handlers.NewCatalogHandler(catalogService)
 	healthHandler := handlers.NewHealthHandler(database)
 

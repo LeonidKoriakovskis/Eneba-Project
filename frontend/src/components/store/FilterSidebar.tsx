@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { centsToEuroInput, euroInputToCents } from '../../lib/format';
+import { PlatformIcon } from '../PlatformBadge';
 
 export interface StoreFilters {
   q: string;
@@ -158,7 +159,10 @@ export function FilterSidebar({ filters, activeCount, onChange, onClear, onClose
           </Pill>
           {PLATFORMS.map((p) => (
             <Pill key={p} active={filters.platform === p} onClick={() => onChange({ platform: p })}>
-              {p}
+              <span className="inline-flex items-center gap-1.5">
+                <PlatformIcon platform={p} className="h-3.5 w-3.5" />
+                {p}
+              </span>
             </Pill>
           ))}
         </div>

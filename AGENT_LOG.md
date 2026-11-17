@@ -687,3 +687,43 @@ Verify `npm run build` succeeds cleanly after updating.
 
 ### 3. Verification Results
 - `npm run build` (`tsc -b && vite build`): exited with code `0` (`dist/assets/index-C4YinW3I.css 35.94 kB`, `dist/assets/index-DJ_imKW4.js 272.31 kB`, built in `3.60s`).
+
+
+---
+
+## Turn 10: Real Vertical Game Artwork & `react-icons` Platform Badges
+
+### 1. User Prompt
+```text
+Let's upgrade the visual authenticity of the game cards and hero banner across the app using real game box art and imported brand icons. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Make these two upgrades:
+
+1. REAL GAME COVER ARTWORK (Vertical Box Art + Reliable Fallback):
+   - Update `backend/migrations/002_seed.sql` (and add an idempotent startup image-URL sync in the Go backend so existing databases update automatically on restart) so every seeded game uses real, official vertical game cover art URLs (such as Steam's public vertical library artwork `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/<APP_ID>/library_600x900.jpg`).
+   - Keep a sleek styled fallback card cover on `<img>` `onError` so if any external CDN image ever fails to load, it degrades gracefully without broken image icons.
+
+2. IMPORTED PLATFORM LOGOS (`react-icons`):
+   - Install `react-icons` in `/frontend` (`npm install react-icons`).
+   - Create a reusable `<PlatformBadge platform={product.platform} />` component in `frontend/src/components/` importing the official brand icons (`FaSteam`, `FaPlaystation`, `FaXbox` from `react-icons/fa` and `SiNintendoswitch` / `SiNintendo` from `react-icons/si`) paired with the platform name.
+   - Use `<PlatformBadge />` consistently across the Hero Banner, Product Cards, Store Filter Sidebar, Product Detail Page, Cart, and Order/Key cards.
+
+Verify `go test -v ./...` and `npm run build` both pass with zero errors, and stop so I can inspect the updated storefront in the browser.
+```
+
+### 2. Architectural Plan & Summary of Changes
+1. **Official Vertical Game Cover Art + Startup Sync (`backend/`)**:
+   - Updated `backend/migrations/002_seed.sql` with official `library_600x900.jpg` Steam vertical box-art URLs across the seeded PC/console catalog (plus official Tears of the Kingdom cover art) and `library_hero.jpg` wide hero artwork on the `hero_banner` block.
+   - Added `SyncProductCovers` and `SyncHeroBannerImages` in `backend/internal/repository/catalog.go`, wrapped by `CatalogService.EnsureCatalogArtwork` in `backend/internal/services/catalog.go`.
+   - Wired `EnsureCatalogArtwork` into server startup (`backend/cmd/api/main.go`) and catalog test setup (`backend/internal/handlers/catalog_test.go`) so existing databases automatically sync on restart.
+2. **Sleek Box-Art Error Fallback (`frontend/src/components/CoverImage.tsx`)**:
+   - Enhanced the `<img>` `onError` fallback card with a branded violet gradient, `Gamepad2` badge, game initials, and clamped title text so failed CDN requests never render broken image icons.
+3. **Official Brand Platform Icons (`react-icons`)**:
+   - Installed `react-icons` (`5.7.0`) in `frontend/package.json`.
+   - Created `frontend/src/components/PlatformBadge.tsx` exporting `PlatformIcon` and `PlatformBadge` using `FaSteam`, `FaPlaystation`, `FaXbox`, `FaGamepad` (`react-icons/fa`) and `BsNintendoSwitch` (`react-icons/bs`, replacing `SiNintendoswitch` which is absent in `react-icons@5.7.0`).
+   - Re-exported `PlatformBadge` and `PlatformIcon` from `frontend/src/components/Badges.tsx` (used across `HeroBanner`, `ProductCard`, `SearchBar`, `ProductPage`, `CartPage`, `CheckoutPage`, and `OrderKeyCard`) and added `<PlatformIcon />` to the platform filter pills in `frontend/src/components/store/FilterSidebar.tsx`.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...`: **11/11 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.547s`), syncing the updated Steam/Nintendo cover URLs in PostgreSQL.
+- `npm test` (frontend): **6/6 tests passed** (`460.98ms`).
+- `npm run build` (`tsc -b && vite build`): exited with code `0` (`1626 modules transformed`, `dist/assets/index-Bgn89CAr.css 36.49 kB`, `dist/assets/index-29mFSXlE.js 280.11 kB`, built in `5.71s`).

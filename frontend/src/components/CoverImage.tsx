@@ -17,7 +17,7 @@ function initials(title: string): string {
     .join('');
 }
 
-/** Cover art with a branded gradient fallback when the image is missing or fails to load. */
+/** Cover art with a sleek Eneba-styled box-art fallback when the external image is missing or fails to load. */
 export function CoverImage({ src, alt, className = '' }: CoverImageProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const failed = !src || failedSrc === src;
@@ -27,10 +27,14 @@ export function CoverImage({ src, alt, className = '' }: CoverImageProps) {
       <div
         role="img"
         aria-label={alt}
-        className={`flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-eneba-brand via-eneba-card to-eneba-canvasLight text-eneba-muted ${className}`}
+        className={`relative flex flex-col items-center justify-center gap-2 overflow-hidden bg-gradient-to-br from-[#4618AC] via-[#2B0F6B] to-[#1F0A4D] p-4 text-center text-eneba-muted ${className}`}
       >
-        <Gamepad2 className="h-10 w-10 opacity-70" aria-hidden />
-        <span className="text-2xl font-black tracking-wider text-white/80">{initials(alt)}</span>
+        <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-eneba-yellow/10 blur-2xl" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
+          <Gamepad2 className="h-7 w-7 text-eneba-yellow" aria-hidden />
+        </div>
+        <span className="text-xl font-black tracking-widest text-white/90">{initials(alt) || 'GAME'}</span>
+        {alt && <span className="line-clamp-2 max-w-[14ch] text-[11px] font-bold text-white/70">{alt}</span>}
       </div>
     );
   }

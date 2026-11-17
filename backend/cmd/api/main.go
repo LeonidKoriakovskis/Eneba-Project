@@ -50,6 +50,9 @@ func main() {
 		if err := authService.EnsureDemoUsers(ctx); err != nil {
 			log.Printf("⚠️ Warning: Failed to seed demo users: %v", err)
 		}
+		if err := catalogService.EnsureCatalogArtwork(ctx); err != nil {
+			log.Printf("⚠️ Warning: Failed to sync catalog artwork: %v", err)
+		}
 
 		deps.Catalog = handlers.NewCatalogHandler(catalogService)
 		deps.Auth = handlers.NewAuthHandler(authService)

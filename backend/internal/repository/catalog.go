@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -382,4 +383,65 @@ func (r *CatalogRepository) GetProductBySlug(ctx context.Context, slug string) (
 
 	detail.Offers = offers
 	return &detail, rows.Err()
+}
+
+
+// SyncProductCovers updates cover artwork for seeded products idempotently.
+func (r *CatalogRepository) SyncProductCovers(ctx context.Context, covers map[string]string) error {
+	for id, url := range covers {
+		if _, err := r.pool.Exec(ctx, `
+			UPDATE products SET cover_image_url = $1, updated_at = NOW()
+			WHERE id = $2 AND cover_image_url <> $1
+		`, url, id); err != nil {
+			return fmt.Errorf("failed to sync cover for product %s: %w", id, err)
+		}
+	}
+	return nil
+}
+
+// SyncHeroBannerImages updates banner_image URLs on the seeded hero_banner block idempotently.
+func (r *CatalogRepository) SyncHeroBannerImages(ctx context.Context, blockID string, bannerByProduct map[string]string) error {
+	var raw []byte
+	err := r.pool.QueryRow(ctx, `SELECT config FROM homepage_blocks WHERE id = $1`, blockID).Scan(&raw)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("failed to load hero_banner config: %w", err)
+	}
+
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil
+	}
+
+	items, ok := cfg["items"].([]interface{})
+	if !ok {
+		return nil
+	}
+
+	changed := false
+	for i, item := range items {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		pid, _ := m["product_id"].(string)
+		if targetURL, exists := bannerByProduct[pid]; exists && m["banner_image"] != targetURL {
+			m["banner_image"] = targetURL
+			items[i] = m
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+
+	cfg["items"] = items
+	updated, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx, `UPDATE homepage_blocks SET config = $1, updated_at = NOW() WHERE id = $2`, updated, blockID)
+	return err
 }
