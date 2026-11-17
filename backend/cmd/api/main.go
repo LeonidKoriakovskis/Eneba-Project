@@ -47,6 +47,10 @@ func main() {
 		authService := services.NewAuthService(repository.NewUserRepository(pool), tokens)
 		orderService := services.NewOrderService(repository.NewOrderRepository(pool))
 
+		if err := authService.EnsureDemoUsers(ctx); err != nil {
+			log.Printf("⚠️ Warning: Failed to seed demo users: %v", err)
+		}
+
 		deps.Catalog = handlers.NewCatalogHandler(catalogService)
 		deps.Auth = handlers.NewAuthHandler(authService)
 		deps.Orders = handlers.NewOrderHandler(orderService)

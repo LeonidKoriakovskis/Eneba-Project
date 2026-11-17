@@ -75,16 +75,18 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
 
                   <div className="mt-6 flex flex-wrap items-center gap-4">
                     {inStock ? (
-                      <div className="flex items-center gap-3">
-                        {hasDiscount && <DiscountPill percent={slide.discountPercent} className="text-sm" />}
-                        <div>
-                          {hasDiscount && (
-                            <div className="text-xs text-white/70 line-through">{formatPrice(slide.originalPriceCents)}</div>
-                          )}
-                          <div className="leading-none">
-                            <span className="mr-1.5 text-xs font-semibold uppercase text-white/70">From</span>
-                            <span className="text-3xl font-black text-white">{formatPrice(slide.lowestPriceCents)}</span>
+                      <div>
+                        {hasDiscount && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-white/70 line-through">
+                              {formatPrice(slide.originalPriceCents)}
+                            </span>
+                            <DiscountPill percent={slide.discountPercent} />
                           </div>
+                        )}
+                        <div className="mt-1 flex items-baseline gap-1.5 leading-none">
+                          <span className="text-xs font-semibold uppercase text-white/70">From</span>
+                          <span className="text-3xl font-black text-white">{formatPrice(slide.lowestPriceCents)}</span>
                         </div>
                       </div>
                     ) : (
@@ -109,22 +111,6 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
 
       {count > 1 && (
         <>
-          <button
-            type="button"
-            aria-label="Previous slide"
-            onClick={() => go(index - 1)}
-            className="absolute left-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-black/60 md:block"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next slide"
-            onClick={() => go(index + 1)}
-            className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-black/60 md:block"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
           <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
             {slides.map((s, i) => (
               <button
@@ -136,6 +122,25 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
                 className={`h-2.5 rounded-full transition-all ${i === index ? 'w-8 bg-eneba-yellow' : 'w-2.5 bg-white/50 hover:bg-white/80'}`}
               />
             ))}
+          </div>
+
+          <div className="absolute bottom-4 right-6 z-20 flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous slide"
+              onClick={() => go(index - 1)}
+              className="rounded-full bg-black/45 p-2 text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-black/70 focus:outline-none focus-visible:shadow-glow"
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label="Next slide"
+              onClick={() => go(index + 1)}
+              className="rounded-full bg-black/45 p-2 text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-black/70 focus:outline-none focus-visible:shadow-glow"
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden />
+            </button>
           </div>
         </>
       )}

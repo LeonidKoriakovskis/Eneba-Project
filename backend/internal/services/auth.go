@@ -91,3 +91,27 @@ func (s *AuthService) buildResponse(u *models.User) (*models.AuthResponse, error
 		User:  models.UserProfile{ID: u.ID, Email: u.Email, FullName: u.FullName},
 	}, nil
 }
+
+// EnsureDemoUsers idempotently seeds the demo reviewer accounts with valid bcrypt hashes.
+func (s *AuthService) EnsureDemoUsers(ctx context.Context) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte("Password123!"), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash demo password: %w", err)
+	}
+
+	demos := []struct {
+		id       string
+		email    string
+		fullName string
+	}{
+		{"a0000000-0000-0000-0000-000000000001", "gamer@eneba-demo.com", "Alex Gamer"},
+		{"a0000000-0000-0000-0000-000000000002", "intern@eneba-demo.com", "Eneba Candidate"},
+	}
+
+	for _, d := range demos {
+		if err := s.users.UpsertUser(ctx, d.id, d.email, string(hash), d.fullName); err != nil {
+			return err
+		}
+	}
+	return nil
+}

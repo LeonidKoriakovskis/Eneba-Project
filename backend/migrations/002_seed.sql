@@ -4,10 +4,10 @@
 TRUNCATE TABLE homepage_blocks, digital_keys, order_items, orders, seller_offers, products, users CASCADE;
 
 -- 1. SEED TEST USERS
--- Password for demo users is: Password123! (bcrypt hash: $2a$10$tZ2yDky2b9m/X0h7o7VpIenxJmsXoX1k1V5NsznN74L1rW9yH50eK)
+-- Password for demo users is: Password123! (bcrypt hash: $2a$10$lKRIp9yD6rEfPrIgdRHOLuTzTybdqV0JIQsT3kt45ZNqeb8rCdyHm)
 INSERT INTO users (id, email, password_hash, full_name) VALUES
-('a0000000-0000-0000-0000-000000000001', 'gamer@eneba-demo.com', '$2a$10$tZ2yDky2b9m/X0h7o7VpIenxJmsXoX1k1V5NsznN74L1rW9yH50eK', 'Alex Gamer'),
-('a0000000-0000-0000-0000-000000000002', 'intern@eneba-demo.com', '$2a$10$tZ2yDky2b9m/X0h7o7VpIenxJmsXoX1k1V5NsznN74L1rW9yH50eK', 'Eneba Candidate');
+('a0000000-0000-0000-0000-000000000001', 'gamer@eneba-demo.com', '$2a$10$lKRIp9yD6rEfPrIgdRHOLuTzTybdqV0JIQsT3kt45ZNqeb8rCdyHm', 'Alex Gamer'),
+('a0000000-0000-0000-0000-000000000002', 'intern@eneba-demo.com', '$2a$10$lKRIp9yD6rEfPrIgdRHOLuTzTybdqV0JIQsT3kt45ZNqeb8rCdyHm', 'Eneba Candidate');
 
 -- 2. SEED 16 REALISTIC DIGITAL GAMES
 INSERT INTO products (id, title, slug, description, cover_image_url, platform, region, genre, release_date) VALUES

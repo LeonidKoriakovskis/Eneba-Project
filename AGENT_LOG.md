@@ -600,3 +600,90 @@ flowchart LR
 - `npm test` (`frontend/tests/purchaseFlow.test.mjs`): **6/6 tests passed** (`cartReducer` clamping/merge/removal, `CartPage` empty & populated totals, `CheckoutPage`/`OrdersPage` unauthenticated redirect to `/login?redirect=...` + `sanitizeRedirect`, authenticated `CheckoutPage` & `AuthPage` redirect, `OrderKeyCard` masked vs revealed key + Steam instructions, and `OrderDetailPage` receipt rendering).
 - `npm run build` (`tsc -b && vite build`): **exited with code 0** (`dist/assets/index-CMXm2w-v.css 35.95 kB`, `dist/assets/index-CPIXWvWv.js 272.15 kB`, built in 3.83s).
 - Verified live Go backend on port `8080` (`auth_status:401` on `POST /api/auth/login`) and live Vite dev server on port `5173` (`vite_index:200`, serving all updated routes in `src/App.tsx`).
+
+
+---
+
+## Turn 8: Demo Account Seeding Fix, Cloud Deployment Config & Comprehensive README
+
+### 1. User Prompt
+```text
+Good catch during end-to-end testing: clicking the Demo Account Quick-Fill (`gamer@eneba-demo.com` / `Password123!`) on `/login` returned `401 Invalid email or password` because that demo user wasn't seeded in PostgreSQL `users`. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Let's fix that and prepare the entire application for live cloud deployment (a mandatory deliverable for the Eneba assignment):
+
+1. FIX DEMO ACCOUNT SEEDING:
+   - Update `backend/migrations/002_seed.sql` (and add an idempotent startup seed/ensure-demo-user check in the Go backend) so `gamer@eneba-demo.com` with password `Password123!` (hashed with `bcrypt`) always exists in the `users` table on fresh databases, so Eneba reviewers can test both new account registration AND one-click Demo Sign-In immediately.
+
+2. DEPLOYMENT CONFIGURATION (Free-Tier Cloud Hosting):
+   - Backend (Render / Railway / Fly.io):
+     - Create `backend/Dockerfile` (multi-stage build compiling the Go binary cleanly for Linux) and `render.yaml` at the repo root so the Go API deploys effortlessly on Render's free tier.
+     - Ensure CORS in Go reads `ALLOWED_ORIGINS` from environment variables (supporting both `http://localhost:5173` and the deployed Vercel frontend URL).
+     - Ensure `DATABASE_URL` supports cloud PostgreSQL connection strings (e.g., Neon or Supabase with `sslmode=require`).
+   - Frontend (Vercel):
+     - Add `frontend/vercel.json` with SPA rewrite rules (`"source": "/(.*)"`, `"destination": "/index.html"`) so direct navigation or refreshes on `/store`, `/product/:slug`, `/checkout`, or `/orders` never return a 404 on Vercel.
+     - Add `frontend/.env.example` documenting `VITE_API_URL`.
+
+3. COMPREHENSIVE `README.md`:
+   - Write a clear, well-structured `README.md` in the root directory covering:
+     - Project overview and live demo instructions (including the demo credentials `gamer@eneba-demo.com` / `Password123!`),
+     - Architecture & technical choices (why Go + PostgreSQL `pg_trgm` for fuzzy search, dynamic JSONB homepage blocks, and `FOR UPDATE SKIP LOCKED` transactional key allocation),
+     - Scope decisions, trade-offs, and intentional shortcuts taken for the 7-day assignment,
+     - Local setup & test execution commands (`go test -v ./...` and `npm test`),
+     - Pointer to `AGENT_LOG.md` documenting the full AI-assisted development workflow.
+
+Verify all Go and frontend tests still pass (`go test -v ./...` and `npm test` + `npm run build`), and stop so I can deploy to Neon + Render + Vercel.
+```
+
+### 2. Architectural Plan
+1. **Demo User Seeding**:
+   - Replace the stale bcrypt hash in `backend/migrations/002_seed.sql` with a Go-verified bcrypt hash of `Password123!`.
+   - Add `UserRepository.UpsertUser` (`ON CONFLICT (email) DO UPDATE`) and `AuthService.EnsureDemoUsers`, invoked at API startup in `backend/cmd/api/main.go` and in `setupFullEnv` so both fresh migrations and existing databases reliably authenticate `gamer@eneba-demo.com` / `Password123!`.
+2. **Cloud Hosting Configuration**:
+   - Update `backend/internal/config/config.go` to read `ALLOWED_ORIGINS` (falling back to `CORS_ALLOWED_ORIGINS`), trim trailing slashes, and pass `DATABASE_URL` directly to `pgxpool` (supporting `?sslmode=require` on Neon/Supabase).
+   - Add multi-stage `backend/Dockerfile` (`golang:1.22-alpine` -> `alpine:3.20`) and root `render.yaml` pointing to `rootDir: backend` with `/api/health` checks.
+   - Add `frontend/vercel.json` SPA catch-all rewrite to `/index.html` and document `VITE_API_URL` in `frontend/.env.example`.
+3. **Documentation**:
+   - Write comprehensive `README.md` documenting live demo credentials, architecture, 7-day trade-offs, local commands, cloud deployment steps, and `AGENT_LOG.md`.
+
+### 3. Summary of Changes
+- **Demo User Seeding**:
+  - Updated `backend/migrations/002_seed.sql` with verified bcrypt hash `$2a$10$lKRIp9yD6rEfPrIgdRHOLuTzTybdqV0JIQsT3kt45ZNqeb8rCdyHm` for `Password123!`.
+  - Added `UpsertUser` in `backend/internal/repository/users.go` and `EnsureDemoUsers` in `backend/internal/services/auth.go`.
+  - Wired `EnsureDemoUsers` into `backend/cmd/api/main.go` startup and `backend/internal/handlers/checkout_test.go`, plus added an explicit demo login assertion in `TestAuth_RegisterLoginAndProtectedRoute`.
+- **Cloud Deployment**:
+  - Updated `backend/internal/config/config.go` to prioritize `ALLOWED_ORIGINS` (with `CORS_ALLOWED_ORIGINS` fallback and trailing-slash trimming) and updated `.env.example`.
+  - Created `backend/Dockerfile` (multi-stage static Linux `amd64` build) and `render.yaml`.
+  - Created `frontend/vercel.json` (SPA rewrites) and updated `frontend/.env.example`.
+- **Documentation**:
+  - Created `README.md` in `Eneba Project/README.md`.
+
+### 4. Verification Results
+- `go test -v -count=1 ./...`: **11/11 tests passed** (`ok eneba-marketplace/backend/internal/handlers 2.356s`), including demo login (`gamer@eneba-demo.com` / `Password123!`).
+- Cross-compile check (`CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./cmd/api`): exited with code `0` (`linux/amd64 build OK`).
+- Live API probe (`POST http://localhost:8080/api/auth/login` with `gamer@eneba-demo.com` / `Password123!`): returned `200 OK` with signed JWT and Alex Gamer profile.
+- Frontend `npm test`: **6/6 tests passed**.
+- Frontend `npm run build` (`tsc -b && vite build`): exited with code `0` (`dist/assets/index-CMXm2w-v.css 35.95 kB`, `dist/assets/index-CPIXWvWv.js 272.15 kB`, built in `4.18s`).
+
+
+---
+
+## Turn 9: Hero Banner Price Hierarchy & Navigation Controls Polish
+
+### 1. User Prompt
+```text
+Let's make two quick UI polish improvements on the Hero Banner component (`frontend/src/components/HeroBanner.tsx` or wherever the homepage hero slider is defined). Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`:
+
+1. Price & Discount Layout: Instead of placing the red/orange `-31%` discount pill off to the left side of the price stack, integrate it cleanly right next to the strikethrough original price on the top line of the price block (e.g., `€69.99  -31%` on top, and `FROM €47.99` directly underneath), matching how Eneba aligns discount tags tightly with the price hierarchy.
+2. Carousel Arrow Positioning: Give the left/right hero navigation arrows (`<` and `>`) slightly more horizontal padding/inset or move them to the bottom-right corner of the banner so the left `<` button never overlaps the subtitle text on desktop viewports.
+
+Verify `npm run build` succeeds cleanly after updating.
+```
+
+### 2. Plan & Summary of Changes
+- Updated `frontend/src/components/home/HeroBanner.tsx`:
+  1. **Price & Discount Hierarchy**: Placed the strikethrough original price (`formatPrice(slide.originalPriceCents)`) directly beside `<DiscountPill percent={slide.discountPercent} />` on the top row, with `FROM` and `formatPrice(slide.lowestPriceCents)` stacked underneath.
+  2. **Carousel Navigation Controls**: Moved the Previous/Next arrow buttons into a bottom-right control group (`bottom-4 right-6 z-20`) so the `<` arrow no longer sits along the left edge or overlaps hero copy.
+
+### 3. Verification Results
+- `npm run build` (`tsc -b && vite build`): exited with code `0` (`dist/assets/index-C4YinW3I.css 35.94 kB`, `dist/assets/index-DJ_imKW4.js 272.31 kB`, built in `3.60s`).

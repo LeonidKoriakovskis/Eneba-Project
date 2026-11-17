@@ -58,3 +58,19 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 	}
 	return &u, nil
 }
+
+// UpsertUser ensures a seeded/system user exists with the given password hash and display name.
+func (r *UserRepository) UpsertUser(ctx context.Context, id, email, passwordHash, fullName string) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO users (id, email, password_hash, full_name)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (email) DO UPDATE
+		SET password_hash = EXCLUDED.password_hash,
+		    full_name = EXCLUDED.full_name,
+		    updated_at = NOW()
+	`, id, email, passwordHash, fullName)
+	if err != nil {
+		return fmt.Errorf("failed to upsert user %s: %w", email, err)
+	}
+	return nil
+}

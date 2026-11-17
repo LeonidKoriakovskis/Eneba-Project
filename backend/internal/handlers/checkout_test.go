@@ -57,13 +57,17 @@ func setupFullEnv(t *testing.T) *testEnv {
 
 	pool := database.Pool
 	tokens := auth.NewTokenManager("test-secret-test-secret-test-secret", time.Hour)
+	authService := services.NewAuthService(repository.NewUserRepository(pool), tokens)
+	if err := authService.EnsureDemoUsers(ctx); err != nil {
+		t.Fatalf("failed to seed demo users: %v", err)
+	}
 
 	h := router.New(router.Deps{
 		AllowedOrigins: []string{"http://localhost:5173"},
 		Tokens:         tokens,
 		Health:         handlers.NewHealthHandler(database),
 		Catalog:        handlers.NewCatalogHandler(services.NewCatalogService(repository.NewCatalogRepository(pool))),
-		Auth:           handlers.NewAuthHandler(services.NewAuthService(repository.NewUserRepository(pool), tokens)),
+		Auth:           handlers.NewAuthHandler(authService),
 		Orders:         handlers.NewOrderHandler(services.NewOrderService(repository.NewOrderRepository(pool))),
 	})
 	return &testEnv{handler: h, pool: pool}
@@ -209,6 +213,19 @@ func TestAuth_RegisterLoginAndProtectedRoute(t *testing.T) {
 	_ = json.Unmarshal(rec.Body.Bytes(), &list)
 	if list.Orders == nil || len(list.Orders) != 0 {
 		t.Errorf("expected empty (non-null) orders list, got %+v", list.Orders)
+	}
+
+	// Demo reviewer account (gamer@eneba-demo.com / Password123!) can also log in.
+	demoRec := env.do(t, http.MethodPost, "/api/auth/login", "", models.LoginRequest{
+		Email: "gamer@eneba-demo.com", Password: "Password123!",
+	})
+	if demoRec.Code != http.StatusOK {
+		t.Fatalf("demo login: expected 200, got %d: %s", demoRec.Code, demoRec.Body.String())
+	}
+	var demoLogin models.AuthResponse
+	_ = json.Unmarshal(demoRec.Body.Bytes(), &demoLogin)
+	if demoLogin.Token == "" || demoLogin.User.Email != "gamer@eneba-demo.com" {
+		t.Errorf("unexpected demo login response: %+v", demoLogin)
 	}
 }
 

@@ -22,11 +22,14 @@ func Load() *Config {
 	_ = godotenv.Load("../.env")
 	_ = godotenv.Load(".env")
 
-	originsStr := getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+	originsStr := os.Getenv("ALLOWED_ORIGINS")
+	if originsStr == "" {
+		originsStr = getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+	}
 
 	var origins []string
 	for _, o := range strings.Split(originsStr, ",") {
-		o = strings.TrimSpace(o)
+		o = strings.TrimRight(strings.TrimSpace(o), "/")
 		if o != "" {
 			origins = append(origins, o)
 		}
