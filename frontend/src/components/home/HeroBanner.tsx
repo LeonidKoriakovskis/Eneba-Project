@@ -37,7 +37,7 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className="relative overflow-hidden rounded-2xl bg-eneba-card shadow-card ring-1 ring-white/10"
+      className="relative overflow-hidden rounded-none bg-eneba-card shadow-card ring-1 ring-white/10"
     >
       <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${index * 100}%)` }}>
         {slides.map((slide, i) => {
@@ -59,7 +59,7 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
               <div className="relative z-10 flex h-full min-h-[420px] items-center gap-8 px-6 py-10 md:min-h-[400px] md:px-12">
                 <div className="max-w-xl">
                   {slide.badge && (
-                    <span className="mb-4 inline-block rounded-md bg-eneba-yellow px-3 py-1 text-xs font-black uppercase tracking-widest text-eneba-ink">
+                    <span className="mb-4 inline-block rounded-none bg-eneba-yellow px-3 py-1 text-xs font-black uppercase tracking-widest text-eneba-ink">
                       {slide.badge}
                     </span>
                   )}
@@ -90,7 +90,7 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
                         </div>
                       </div>
                     ) : (
-                      <span className="rounded-md bg-black/40 px-3 py-1.5 text-sm font-bold">Currently out of stock</span>
+                      <span className="rounded-none bg-black/40 px-3 py-1.5 text-sm font-bold">Currently out of stock</span>
                     )}
                     <Link to={`/product/${slide.slug}`} tabIndex={i === index ? 0 : -1} className="btn-yellow px-7 py-3 text-base">
                       Buy Now
@@ -99,7 +99,7 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
                 </div>
 
                 {product && (
-                  <div className="ml-auto hidden w-52 shrink-0 rotate-3 overflow-hidden rounded-xl shadow-2xl ring-4 ring-white/15 lg:block">
+                  <div className="ml-auto hidden w-52 shrink-0 rotate-3 overflow-hidden rounded-none shadow-2xl ring-4 ring-white/15 lg:block">
                     <CoverImage src={product.cover_image_url} alt={product.title} className="aspect-[3/4] w-full" />
                   </div>
                 )}
@@ -119,7 +119,7 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
                 aria-label={`Go to slide ${i + 1}`}
                 aria-current={i === index}
                 onClick={() => go(i)}
-                className={`h-2.5 rounded-full transition-all ${i === index ? 'w-8 bg-eneba-yellow' : 'w-2.5 bg-white/50 hover:bg-white/80'}`}
+                className={`h-2.5 rounded-none transition-all ${i === index ? 'w-8 bg-eneba-yellow' : 'w-2.5 bg-white/50 hover:bg-white/80'}`}
               />
             ))}
           </div>
@@ -129,7 +129,7 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
               type="button"
               aria-label="Previous slide"
               onClick={() => go(index - 1)}
-              className="rounded-full bg-black/45 p-2 text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-black/70 focus:outline-none focus-visible:shadow-glow"
+              className="rounded-none bg-black/45 p-2 text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-black/70 focus:outline-none focus-visible:shadow-glow"
             >
               <ChevronLeft className="h-5 w-5" aria-hidden />
             </button>
@@ -137,7 +137,7 @@ export function HeroBanner({ block }: { block: HomepageBlock }) {
               type="button"
               aria-label="Next slide"
               onClick={() => go(index + 1)}
-              className="rounded-full bg-black/45 p-2 text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-black/70 focus:outline-none focus-visible:shadow-glow"
+              className="rounded-none bg-black/45 p-2 text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-black/70 focus:outline-none focus-visible:shadow-glow"
             >
               <ChevronRight className="h-5 w-5" aria-hidden />
             </button>

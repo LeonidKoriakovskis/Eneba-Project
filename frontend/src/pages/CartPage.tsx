@@ -25,8 +25,8 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-2xl bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-eneba-brand/60 text-eneba-yellow ring-1 ring-white/10">
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-none bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
+        <div className="flex h-16 w-16 items-center justify-center rounded-none bg-eneba-brand/60 text-eneba-yellow ring-1 ring-white/10">
           <ShoppingCart className="h-8 w-8" aria-hidden />
         </div>
         <h1 className="text-2xl font-black">Your cart is empty</h1>
@@ -56,7 +56,7 @@ export default function CartPage() {
           <button
             type="button"
             onClick={clear}
-            className="rounded-lg bg-black/25 px-3 py-1.5 text-xs font-bold text-eneba-muted ring-1 ring-white/10 transition hover:bg-black/40 hover:text-white"
+            className="rounded-none bg-black/25 px-3 py-1.5 text-xs font-bold text-eneba-muted ring-1 ring-white/10 transition hover:bg-black/40 hover:text-white"
           >
             Clear cart
           </button>
@@ -73,11 +73,11 @@ export default function CartPage() {
             return (
               <article
                 key={item.sellerOfferId}
-                className="flex flex-col gap-4 rounded-2xl bg-eneba-card p-4 shadow-card ring-1 ring-white/10 sm:flex-row sm:items-center sm:p-5"
+                className="flex flex-col gap-4 rounded-none bg-eneba-card p-4 shadow-card ring-1 ring-white/10 sm:flex-row sm:items-center sm:p-5"
               >
                 <Link
                   to={`/product/${item.slug}`}
-                  className="w-24 shrink-0 overflow-hidden rounded-xl bg-eneba-canvasLight ring-1 ring-white/10 sm:w-28"
+                  className="w-24 shrink-0 overflow-hidden rounded-none bg-eneba-canvasLight ring-1 ring-white/10 sm:w-28"
                 >
                   <CoverImage src={item.coverImageUrl} alt={item.title} className="aspect-[3/4] w-full" />
                 </Link>
@@ -100,13 +100,13 @@ export default function CartPage() {
                   </p>
 
                   <div className="mt-1 flex flex-wrap items-center gap-4">
-                    <div className="inline-flex items-center rounded-lg bg-eneba-canvas/80 p-1 ring-1 ring-white/10">
+                    <div className="inline-flex items-center rounded-none bg-eneba-canvas/80 p-1 ring-1 ring-white/10">
                       <button
                         type="button"
                         aria-label={`Decrease quantity of ${item.title}`}
                         disabled={item.quantity <= 1}
                         onClick={() => setQuantity(item.sellerOfferId, item.quantity - 1)}
-                        className="rounded-md p-1.5 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-none p-1.5 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Minus className="h-4 w-4" aria-hidden />
                       </button>
@@ -121,7 +121,7 @@ export default function CartPage() {
                         aria-label={`Increase quantity of ${item.title}`}
                         disabled={atLimit}
                         onClick={() => setQuantity(item.sellerOfferId, item.quantity + 1)}
-                        className="rounded-md p-1.5 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-none p-1.5 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Plus className="h-4 w-4" aria-hidden />
                       </button>
@@ -134,7 +134,7 @@ export default function CartPage() {
                     <button
                       type="button"
                       onClick={() => removeItem(item.sellerOfferId)}
-                      className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-eneba-magenta transition hover:bg-eneba-magenta/10 sm:ml-0"
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-none px-2.5 py-1.5 text-xs font-bold text-eneba-magenta transition hover:bg-eneba-magenta/10 sm:ml-0"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                       Remove
@@ -161,7 +161,7 @@ export default function CartPage() {
         </section>
 
         <aside aria-label="Order summary" className="lg:sticky lg:top-28 lg:self-start">
-          <div className="space-y-5 rounded-2xl bg-eneba-card p-6 shadow-card ring-1 ring-white/10">
+          <div className="space-y-5 rounded-none bg-eneba-card p-6 shadow-card ring-1 ring-white/10">
             <h2 className="text-xl font-black">Order Summary</h2>
 
             <dl className="space-y-3 text-sm">

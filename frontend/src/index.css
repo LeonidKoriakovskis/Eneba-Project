@@ -28,7 +28,7 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   background: #4618ac;
-  border-radius: 6px;
+  border-radius: 0px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #5b2fc4;
@@ -61,9 +61,9 @@ input[type='number'],
 
 @layer components {
   .btn-yellow {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-eneba-yellow px-5 py-2.5 text-sm font-extrabold text-eneba-ink transition hover:bg-eneba-yellowHover focus:outline-none focus-visible:shadow-glow disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-none bg-eneba-yellow px-5 py-2.5 text-sm font-extrabold text-eneba-ink transition hover:bg-eneba-yellowHover focus:outline-none focus-visible:shadow-glow disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border-2 border-eneba-yellow px-5 py-2 text-sm font-extrabold text-eneba-yellow transition hover:bg-eneba-yellow hover:text-eneba-ink focus:outline-none focus-visible:shadow-glow disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-eneba-yellow;
+    @apply inline-flex items-center justify-center gap-2 rounded-none border-2 border-eneba-yellow px-5 py-2 text-sm font-extrabold text-eneba-yellow transition hover:bg-eneba-yellow hover:text-eneba-ink focus:outline-none focus-visible:shadow-glow disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-eneba-yellow;
   }
 }

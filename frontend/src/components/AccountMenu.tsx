@@ -28,7 +28,7 @@ export function AccountMenu() {
     return (
       <Link
         to="/login"
-        className="inline-flex h-11 items-center gap-2 rounded-lg bg-eneba-yellow px-3 text-sm font-extrabold text-eneba-ink transition hover:bg-eneba-yellowHover sm:px-4"
+        className="inline-flex h-11 items-center gap-2 rounded-none bg-eneba-yellow px-3 text-sm font-extrabold text-eneba-ink transition hover:bg-eneba-yellowHover sm:px-4"
       >
         <User className="h-5 w-5" aria-hidden />
         <span className="hidden sm:inline">Sign In / Register</span>
@@ -47,9 +47,9 @@ export function AccountMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex h-11 items-center gap-2 rounded-lg bg-eneba-canvas/60 px-2.5 text-sm font-bold ring-1 ring-white/10 transition hover:bg-eneba-canvas sm:px-3"
+        className="inline-flex h-11 items-center gap-2 rounded-none bg-eneba-canvas/60 px-2.5 text-sm font-bold ring-1 ring-white/10 transition hover:bg-eneba-canvas sm:px-3"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-eneba-yellow text-sm font-black text-eneba-ink">
+        <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-eneba-yellow text-sm font-black text-eneba-ink">
           {initial}
         </span>
         <span className="hidden max-w-[7rem] truncate sm:inline">{firstName}</span>
@@ -59,7 +59,7 @@ export function AccountMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl bg-eneba-card shadow-2xl ring-1 ring-white/10"
+          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-none bg-eneba-card shadow-2xl ring-1 ring-white/10"
         >
           <div className="border-b border-white/10 px-4 py-3">
             <div className="truncate text-sm font-extrabold">{user.full_name}</div>

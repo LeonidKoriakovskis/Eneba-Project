@@ -129,7 +129,7 @@ export function SearchBar() {
           aria-controls="search-suggestions"
           aria-autocomplete="list"
           aria-label="Search games"
-          className="h-11 w-full rounded-lg bg-eneba-canvas/80 pl-11 pr-20 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-white/10 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
+          className="h-11 w-full rounded-none bg-eneba-canvas/80 pl-11 pr-20 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-white/10 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
         />
         <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
           {(loading || pending) && showPanel && <Loader2 className="h-4 w-4 animate-spin text-eneba-muted" aria-hidden />}
@@ -141,12 +141,12 @@ export function SearchBar() {
                 setValue('');
                 inputRef.current?.focus();
               }}
-              className="rounded p-1 text-eneba-muted hover:text-white"
+              className="rounded-none p-1 text-eneba-muted hover:text-white"
             >
               <X className="h-4 w-4" />
             </button>
           )}
-          <button type="submit" aria-label="Search" className="rounded-md bg-eneba-yellow p-1.5 text-eneba-ink hover:bg-eneba-yellowHover">
+          <button type="submit" aria-label="Search" className="rounded-none bg-eneba-yellow p-1.5 text-eneba-ink hover:bg-eneba-yellowHover">
             <Search className="h-4 w-4" />
           </button>
         </div>
@@ -156,7 +156,7 @@ export function SearchBar() {
         <div
           id="search-suggestions"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl bg-eneba-card shadow-2xl ring-1 ring-white/10"
+          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-none bg-eneba-card shadow-2xl ring-1 ring-white/10"
         >
           {results.map((p, i) => {
             const inStock = p.total_stock_count > 0 && p.lowest_price_cents > 0;
@@ -175,12 +175,12 @@ export function SearchBar() {
                   i === active ? 'bg-eneba-cardHover' : 'hover:bg-eneba-cardHover/60'
                 }`}
               >
-                <CoverImage src={p.cover_image_url} alt={p.title} className="h-16 w-12 shrink-0 rounded-md ring-1 ring-white/10" />
+                <CoverImage src={p.cover_image_url} alt={p.title} className="h-16 w-12 shrink-0 rounded-none ring-1 ring-white/10" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-bold text-white">{p.title}</span>
                     {fuzzy && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded bg-eneba-teal/15 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-eneba-teal ring-1 ring-inset ring-eneba-teal/35">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-none bg-eneba-teal/15 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-eneba-teal ring-1 ring-inset ring-eneba-teal/35">
                         <Sparkles className="h-2.5 w-2.5" aria-hidden />
                         Fuzzy match
                       </span>

@@ -4,7 +4,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   return (
     <div
       role="alert"
-      className="mx-auto flex max-w-lg flex-col items-center gap-3 rounded-2xl bg-eneba-card p-8 text-center ring-1 ring-eneba-magenta/50"
+      className="mx-auto flex max-w-lg flex-col items-center gap-3 rounded-none bg-eneba-card p-8 text-center ring-1 ring-eneba-magenta/50"
     >
       <AlertTriangle className="h-10 w-10 text-eneba-magenta" aria-hidden />
       <h2 className="text-lg font-extrabold">Something went wrong</h2>

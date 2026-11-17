@@ -128,7 +128,7 @@ export function CustomSelect<T extends string = string>({
         aria-label={ariaLabel}
         onClick={() => setOpen((prev) => !prev)}
         onKeyDown={handleButtonKeyDown}
-        className={`flex w-full items-center justify-between gap-2.5 rounded-lg bg-[#1F0A4D] px-3.5 py-2 text-left text-sm font-bold text-white transition hover:bg-[#37128A] focus:outline-none ${
+        className={`flex w-full items-center justify-between gap-2.5 rounded-none bg-[#1F0A4D] px-3.5 py-2 text-left text-sm font-bold text-white transition hover:bg-[#37128A] focus:outline-none ${
           open ? 'ring-2 ring-[#FFDC00]' : 'ring-1 ring-inset ring-white/15 focus-visible:ring-2 focus-visible:ring-[#FFDC00]'
         }`}
       >
@@ -144,7 +144,7 @@ export function CustomSelect<T extends string = string>({
         role="listbox"
         aria-label={ariaLabel}
         aria-hidden={!open}
-        className={`absolute right-0 z-40 mt-1.5 w-full min-w-[210px] origin-top-right overflow-hidden rounded-xl bg-[#1F0A4D] p-1 shadow-2xl ring-1 ring-white/15 transition-all duration-150 ease-out ${
+        className={`absolute right-0 z-40 mt-1.5 w-full min-w-[210px] origin-top-right overflow-hidden rounded-none bg-[#1F0A4D] p-1 shadow-2xl ring-1 ring-white/15 transition-all duration-150 ease-out ${
           open ? 'visible scale-100 opacity-100' : 'pointer-events-none invisible scale-95 opacity-0'
         }`}
       >
@@ -158,7 +158,7 @@ export function CustomSelect<T extends string = string>({
               aria-selected={isSelected}
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => selectByIndex(index)}
-              className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+              className={`flex cursor-pointer items-center justify-between gap-2 rounded-none px-3 py-2 text-sm transition-colors ${
                 isSelected
                   ? 'bg-[#37128A] font-extrabold text-[#FFDC00]'
                   : isHighlighted

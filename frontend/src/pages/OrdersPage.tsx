@@ -49,9 +49,9 @@ export default function OrdersPage() {
   if (state.status === 'loading') {
     return (
       <div className="mx-auto max-w-4xl space-y-4" aria-busy="true" aria-label="Loading orders">
-        <div className="h-9 w-48 animate-pulse rounded bg-eneba-card" />
-        <div className="h-48 animate-pulse rounded-2xl bg-eneba-card" />
-        <div className="h-48 animate-pulse rounded-2xl bg-eneba-card" />
+        <div className="h-9 w-48 animate-pulse rounded-none bg-eneba-card" />
+        <div className="h-48 animate-pulse rounded-none bg-eneba-card" />
+        <div className="h-48 animate-pulse rounded-none bg-eneba-card" />
       </div>
     );
   }
@@ -77,8 +77,8 @@ export default function OrdersPage() {
       </div>
 
       {orders.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-eneba-brand/60 text-eneba-yellow ring-1 ring-white/10">
+        <div className="flex flex-col items-center gap-4 rounded-none bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
+          <div className="flex h-16 w-16 items-center justify-center rounded-none bg-eneba-brand/60 text-eneba-yellow ring-1 ring-white/10">
             <Package className="h-8 w-8" aria-hidden />
           </div>
           <h2 className="text-xl font-black">No orders yet</h2>
@@ -97,7 +97,7 @@ export default function OrdersPage() {
               <section
                 key={order.id}
                 aria-label={`Order ${order.id.slice(0, 8)}`}
-                className="overflow-hidden rounded-2xl bg-eneba-card shadow-card ring-1 ring-white/10"
+                className="overflow-hidden rounded-none bg-eneba-card shadow-card ring-1 ring-white/10"
               >
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-black/20 px-5 py-4">
                   <div className="space-y-1">
@@ -105,7 +105,7 @@ export default function OrdersPage() {
                       <span className="font-mono text-sm font-black text-white">
                         Order #{order.id.slice(0, 8)}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-[#00D1B2]/15 px-2 py-0.5 text-[11px] font-extrabold uppercase text-[#00D1B2]">
+                      <span className="inline-flex items-center gap-1 rounded-none bg-[#00D1B2]/15 px-2 py-0.5 text-[11px] font-extrabold uppercase text-[#00D1B2]">
                         <CheckCircle2 className="h-3 w-3" aria-hidden />
                         {order.status}
                       </span>
@@ -126,7 +126,7 @@ export default function OrdersPage() {
                     <Link
                       to={`/orders/${order.id}`}
                       state={{ order }}
-                      className="rounded-lg bg-eneba-canvas/70 px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 hover:bg-eneba-canvas"
+                      className="rounded-none bg-eneba-canvas/70 px-3 py-2 text-xs font-bold text-white ring-1 ring-white/10 hover:bg-eneba-canvas"
                     >
                       Receipt
                     </Link>
@@ -136,7 +136,7 @@ export default function OrdersPage() {
                       onClick={() => toggleOrder(order.id)}
                       aria-expanded={expanded}
                       aria-label={expanded ? 'Collapse keys' : 'Expand keys'}
-                      className="rounded-lg bg-eneba-canvas/70 p-2 text-white ring-1 ring-white/10 hover:bg-eneba-canvas"
+                      className="rounded-none bg-eneba-canvas/70 p-2 text-white ring-1 ring-white/10 hover:bg-eneba-canvas"
                     >
                       {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </button>

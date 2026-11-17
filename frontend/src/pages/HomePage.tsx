@@ -29,9 +29,9 @@ function BlockRenderer({ block }: { block: HomepageBlock }) {
 function HomeSkeleton() {
   return (
     <div className="space-y-10" aria-busy="true" aria-label="Loading homepage">
-      <div className="h-[400px] animate-pulse rounded-2xl bg-eneba-card" />
+      <div className="h-[400px] animate-pulse rounded-none bg-eneba-card" />
       <div>
-        <div className="mb-4 h-7 w-56 animate-pulse rounded bg-eneba-card" />
+        <div className="mb-4 h-7 w-56 animate-pulse rounded-none bg-eneba-card" />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {Array.from({ length: 5 }, (_, i) => (
             <ProductCardSkeleton key={i} />

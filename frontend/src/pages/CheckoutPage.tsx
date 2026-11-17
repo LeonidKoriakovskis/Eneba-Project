@@ -72,7 +72,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-2xl bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-none bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
         <ShoppingCart className="h-12 w-12 text-eneba-muted" aria-hidden />
         <h1 className="text-2xl font-black">Nothing to check out</h1>
         <p className="text-sm text-eneba-muted">Add at least one game offer to your cart before proceeding to payment.</p>
@@ -141,14 +141,14 @@ export default function CheckoutPage() {
         <div className="flex items-center gap-3">
           <Link
             to="/cart"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-eneba-card px-3 py-2 text-xs font-bold text-eneba-muted ring-1 ring-white/10 hover:text-white"
+            className="inline-flex items-center gap-1.5 rounded-none bg-eneba-card px-3 py-2 text-xs font-bold text-eneba-muted ring-1 ring-white/10 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden /> Back to Cart
           </Link>
           <h1 className="text-2xl font-black md:text-3xl">Checkout</h1>
         </div>
 
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00D1B2]/15 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wide text-[#00D1B2] ring-1 ring-inset ring-[#00D1B2]/40">
+        <span className="inline-flex items-center gap-1.5 rounded-none bg-[#00D1B2]/15 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wide text-[#00D1B2] ring-1 ring-inset ring-[#00D1B2]/40">
           <FlaskConical className="h-4 w-4" aria-hidden />
           Test Mode — No Real Money Charged
         </span>
@@ -157,7 +157,7 @@ export default function CheckoutPage() {
       {conflict && (
         <div
           role="alert"
-          className="flex flex-col gap-3 rounded-2xl bg-eneba-orange/15 p-5 ring-1 ring-eneba-orange sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-none bg-eneba-orange/15 p-5 ring-1 ring-eneba-orange sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-eneba-orange" aria-hidden />
@@ -200,7 +200,7 @@ export default function CheckoutPage() {
       {error && (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-2xl bg-eneba-magenta/15 p-4 text-sm font-semibold text-white ring-1 ring-eneba-magenta/60"
+          className="flex items-start gap-3 rounded-none bg-eneba-magenta/15 p-4 text-sm font-semibold text-white ring-1 ring-eneba-magenta/60"
         >
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-eneba-magenta" aria-hidden />
           <span>{error}</span>
@@ -210,21 +210,21 @@ export default function CheckoutPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* Left column: Buyer + Simulated Payment */}
         <div className="space-y-6">
-          <section className="rounded-2xl bg-eneba-card p-5 shadow-card ring-1 ring-white/10 sm:p-6">
+          <section className="rounded-none bg-eneba-card p-5 shadow-card ring-1 ring-white/10 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-extrabold uppercase tracking-widest text-eneba-muted">Buyer Account</h2>
                 <p className="mt-1 text-base font-extrabold text-white">{user?.full_name}</p>
                 <p className="text-sm text-eneba-muted">{user?.email}</p>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#00D1B2]/15 px-3 py-1.5 text-xs font-bold text-[#00D1B2]">
+              <span className="inline-flex items-center gap-1.5 rounded-none bg-[#00D1B2]/15 px-3 py-1.5 text-xs font-bold text-[#00D1B2]">
                 <CheckCircle2 className="h-4 w-4" aria-hidden />
                 Keys delivered to your account immediately
               </span>
             </div>
           </section>
 
-          <section aria-labelledby="payment-heading" className="rounded-2xl bg-eneba-card p-5 shadow-card ring-1 ring-white/10 sm:p-6">
+          <section aria-labelledby="payment-heading" className="rounded-none bg-eneba-card p-5 shadow-card ring-1 ring-white/10 sm:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 id="payment-heading" className="text-xl font-black">
                 Payment Method
@@ -241,7 +241,7 @@ export default function CheckoutPage() {
                 return (
                   <label
                     key={option.id}
-                    className={`flex cursor-pointer items-start gap-3.5 rounded-xl p-4 ring-1 transition ${
+                    className={`flex cursor-pointer items-start gap-3.5 rounded-none p-4 ring-1 transition ${
                       selected
                         ? 'bg-eneba-brand/50 ring-2 ring-eneba-yellow'
                         : 'bg-eneba-canvas/50 ring-white/10 hover:bg-eneba-canvas/80'
@@ -271,7 +271,7 @@ export default function CheckoutPage() {
 
             {/* Mock payment preview */}
             {paymentMethod === 'card' && (
-              <div className="mt-4 rounded-xl bg-gradient-to-br from-eneba-canvas to-eneba-brand/60 p-4 ring-1 ring-white/15">
+              <div className="mt-4 rounded-none bg-gradient-to-br from-eneba-canvas to-eneba-brand/60 p-4 ring-1 ring-white/15">
                 <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-eneba-muted">
                   <span>Sandbox Visa Card</span>
                   <span className="text-[#00D1B2]">TEST MODE</span>
@@ -297,7 +297,7 @@ export default function CheckoutPage() {
             )}
 
             {paymentMethod === 'paypal' && (
-              <div className="mt-4 rounded-xl bg-eneba-canvas/70 p-4 text-sm ring-1 ring-white/15">
+              <div className="mt-4 rounded-none bg-eneba-canvas/70 p-4 text-sm ring-1 ring-white/15">
                 <p className="font-bold text-white">PayPal Sandbox Account</p>
                 <p className="mt-1 text-xs text-eneba-muted">
                   Authorized as <span className="font-semibold text-white">buyer-sandbox@eneba-demo.com</span>. No real funds will leave your account.
@@ -306,7 +306,7 @@ export default function CheckoutPage() {
             )}
 
             {paymentMethod === 'wallet' && (
-              <div className="mt-4 flex items-center justify-between rounded-xl bg-eneba-canvas/70 p-4 text-sm ring-1 ring-white/15">
+              <div className="mt-4 flex items-center justify-between rounded-none bg-eneba-canvas/70 p-4 text-sm ring-1 ring-white/15">
                 <div>
                   <p className="font-bold text-white">Eneba Demo Wallet</p>
                   <p className="mt-0.5 text-xs text-eneba-muted">Instant simulated wallet deduction</p>
@@ -319,7 +319,7 @@ export default function CheckoutPage() {
 
         {/* Right column: Order Summary & Pay CTA */}
         <aside aria-label="Checkout summary" className="lg:sticky lg:top-28 lg:self-start">
-          <div className="space-y-5 rounded-2xl bg-eneba-card p-6 shadow-card ring-1 ring-white/10">
+          <div className="space-y-5 rounded-none bg-eneba-card p-6 shadow-card ring-1 ring-white/10">
             <h2 className="text-xl font-black">Order Summary</h2>
 
             <ul className="divide-y divide-white/10">

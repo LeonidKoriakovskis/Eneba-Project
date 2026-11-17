@@ -176,15 +176,15 @@ export default function StorePage() {
 
         <section aria-live="polite">
           {/* Sort & result bar */}
-          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl bg-eneba-card px-4 py-3 ring-1 ring-white/10">
+          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-none bg-eneba-card px-4 py-3 ring-1 ring-white/10">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="font-extrabold">
                 {loading && !state.data ? 'Loading…' : `${total} result${total === 1 ? '' : 's'}`}
               </span>
               {filters.q && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-eneba-yellow py-1 pl-3 pr-1.5 text-xs font-extrabold text-eneba-ink">
+                <span className="inline-flex items-center gap-1 rounded-none bg-eneba-yellow py-1 pl-3 pr-1.5 text-xs font-extrabold text-eneba-ink">
                   “{filters.q}”
-                  <button type="button" aria-label="Remove search query" onClick={() => update({ q: undefined })} className="rounded-full p-0.5 hover:bg-black/10">
+                  <button type="button" aria-label="Remove search query" onClick={() => update({ q: undefined })} className="rounded-none p-0.5 hover:bg-black/10">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </span>
@@ -227,7 +227,7 @@ export default function StorePage() {
           )}
 
           {state.data && products.length === 0 && state.status !== 'error' && (
-            <div className="flex flex-col items-center gap-3 rounded-2xl bg-eneba-card px-6 py-16 text-center ring-1 ring-white/10">
+            <div className="flex flex-col items-center gap-3 rounded-none bg-eneba-card px-6 py-16 text-center ring-1 ring-white/10">
               <SearchX className="h-12 w-12 text-eneba-muted" aria-hidden />
               <h2 className="text-xl font-black">No games found</h2>
               <p className="max-w-md text-sm text-eneba-muted">
@@ -288,9 +288,9 @@ export default function StorePage() {
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-eneba-canvas py-1 pl-3 pr-1.5 text-xs font-bold ring-1 ring-inset ring-white/15">
+    <span className="inline-flex items-center gap-1 rounded-none bg-eneba-canvas py-1 pl-3 pr-1.5 text-xs font-bold ring-1 ring-inset ring-white/15">
       {label}
-      <button type="button" aria-label={`Remove ${label} filter`} onClick={onRemove} className="rounded-full p-0.5 hover:bg-white/10">
+      <button type="button" aria-label={`Remove ${label} filter`} onClick={onRemove} className="rounded-none p-0.5 hover:bg-white/10">
         <X className="h-3.5 w-3.5" />
       </button>
     </span>

@@ -81,7 +81,7 @@ export function CartDrawer({ forceOpen }: CartDrawerProps) {
             type="button"
             onClick={closeDrawer}
             aria-label="Close cart"
-            className="rounded-lg p-1.5 text-white/80 transition hover:bg-white/10 hover:text-white"
+            className="rounded-none p-1.5 text-white/80 transition hover:bg-white/10 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -119,12 +119,12 @@ export function CartDrawer({ forceOpen }: CartDrawerProps) {
                 return (
                   <li
                     key={item.sellerOfferId}
-                    className="flex gap-3 rounded-xl bg-eneba-card p-3.5 ring-1 ring-white/10"
+                    className="flex gap-3 rounded-none bg-eneba-card p-3.5 ring-1 ring-white/10"
                   >
                     <Link
                       to={`/product/${item.slug}`}
                       onClick={closeDrawer}
-                      className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-eneba-canvas ring-1 ring-white/10"
+                      className="h-20 w-14 shrink-0 overflow-hidden rounded-none bg-eneba-canvas ring-1 ring-white/10"
                     >
                       <CoverImage src={item.coverImageUrl} alt={item.title} className="h-full w-full" />
                     </Link>
@@ -142,7 +142,7 @@ export function CartDrawer({ forceOpen }: CartDrawerProps) {
                           type="button"
                           onClick={() => removeItem(item.sellerOfferId)}
                           aria-label={`Remove ${item.title}`}
-                          className="rounded p-1 text-eneba-muted transition hover:bg-eneba-magenta/15 hover:text-eneba-magenta"
+                          className="rounded-none p-1 text-eneba-muted transition hover:bg-eneba-magenta/15 hover:text-eneba-magenta"
                         >
                           <Trash2 className="h-3.5 w-3.5" aria-hidden />
                         </button>
@@ -158,13 +158,13 @@ export function CartDrawer({ forceOpen }: CartDrawerProps) {
                       </p>
 
                       <div className="mt-auto flex items-center justify-between pt-1">
-                        <div className="inline-flex items-center rounded-md bg-eneba-canvas/80 p-0.5 ring-1 ring-white/10">
+                        <div className="inline-flex items-center rounded-none bg-eneba-canvas/80 p-0.5 ring-1 ring-white/10">
                           <button
                             type="button"
                             aria-label={`Decrease quantity of ${item.title}`}
                             disabled={item.quantity <= 1}
                             onClick={() => setQuantity(item.sellerOfferId, item.quantity - 1)}
-                            className="rounded p-1 text-white hover:bg-white/10 disabled:opacity-40"
+                            className="rounded-none p-1 text-white hover:bg-white/10 disabled:opacity-40"
                           >
                             <Minus className="h-3.5 w-3.5" aria-hidden />
                           </button>
@@ -176,7 +176,7 @@ export function CartDrawer({ forceOpen }: CartDrawerProps) {
                             aria-label={`Increase quantity of ${item.title}`}
                             disabled={atLimit}
                             onClick={() => setQuantity(item.sellerOfferId, item.quantity + 1)}
-                            className="rounded p-1 text-white hover:bg-white/10 disabled:opacity-40"
+                            className="rounded-none p-1 text-white hover:bg-white/10 disabled:opacity-40"
                           >
                             <Plus className="h-3.5 w-3.5" aria-hidden />
                           </button>
@@ -226,7 +226,7 @@ export function CartDrawer({ forceOpen }: CartDrawerProps) {
             <Link
               to="/cart"
               onClick={closeDrawer}
-              className="block rounded-lg py-2 text-center text-xs font-extrabold text-eneba-yellow hover:bg-white/5 hover:underline"
+              className="block rounded-none py-2 text-center text-xs font-extrabold text-eneba-yellow hover:bg-white/5 hover:underline"
             >
               View Full Cart
             </Link>

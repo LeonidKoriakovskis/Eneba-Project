@@ -61,7 +61,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-full px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wide transition ${
+      className={`rounded-none px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wide transition ${
         active
           ? 'bg-eneba-yellow text-eneba-ink'
           : 'bg-eneba-canvas/60 text-white ring-1 ring-inset ring-white/15 hover:bg-eneba-canvas'
@@ -114,7 +114,7 @@ function PriceFilter({
   const invalidRange = lo !== undefined && hi !== undefined && lo > hi;
 
   const inputClass =
-    'no-spinner w-full rounded-lg bg-eneba-canvas/70 py-2 pl-7 pr-2 text-sm font-semibold text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
+    'no-spinner w-full rounded-none bg-eneba-canvas/70 py-2 pl-7 pr-2 text-sm font-semibold text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
 
   return (
     <div>
@@ -190,11 +190,11 @@ export function FilterSidebar({ filters, activeCount, onChange, onClear, onClose
   };
 
   return (
-    <aside aria-label="Filters" className="space-y-6 rounded-2xl bg-eneba-card p-5 ring-1 ring-white/10">
+    <aside aria-label="Filters" className="space-y-6 rounded-none bg-eneba-card p-5 ring-1 ring-white/10">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-black">Filters</h2>
         {onClose && (
-          <button type="button" onClick={onClose} aria-label="Close filters" className="rounded p-1 text-eneba-muted hover:text-white lg:hidden">
+          <button type="button" onClick={onClose} aria-label="Close filters" className="rounded-none p-1 text-eneba-muted hover:text-white lg:hidden">
             <X className="h-5 w-5" />
           </button>
         )}

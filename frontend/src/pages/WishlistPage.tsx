@@ -39,8 +39,8 @@ export default function WishlistPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-2xl bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-eneba-brand/60 ring-1 ring-white/15">
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-none bg-eneba-card px-6 py-16 text-center shadow-card ring-1 ring-white/10">
+        <span className="flex h-16 w-16 items-center justify-center rounded-none bg-eneba-brand/60 ring-1 ring-white/15">
           <Heart className="h-8 w-8 text-eneba-magenta" aria-hidden />
         </span>
         <h1 className="text-2xl font-black text-white">Your wishlist is empty</h1>
@@ -56,9 +56,9 @@ export default function WishlistPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-eneba-card px-5 py-4 shadow-card ring-1 ring-white/10">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-none bg-eneba-card px-5 py-4 shadow-card ring-1 ring-white/10">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-eneba-magenta/15 ring-1 ring-eneba-magenta/40">
+          <span className="flex h-10 w-10 items-center justify-center rounded-none bg-eneba-magenta/15 ring-1 ring-eneba-magenta/40">
             <Heart className="h-5 w-5 fill-eneba-magenta text-eneba-magenta" aria-hidden />
           </span>
           <div>
@@ -76,7 +76,7 @@ export default function WishlistPage() {
           <button
             type="button"
             onClick={clearWishlist}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3.5 py-2 text-xs font-extrabold text-eneba-muted transition hover:border-eneba-magenta/60 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-eneba-yellow"
+            className="inline-flex items-center gap-1.5 rounded-none border border-white/15 px-3.5 py-2 text-xs font-extrabold text-eneba-muted transition hover:border-eneba-magenta/60 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-eneba-yellow"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden />
             Clear Wishlist
@@ -98,7 +98,7 @@ export default function WishlistPage() {
                   type="button"
                   disabled={!inStock || isMoving}
                   onClick={() => handleMoveToCart(product)}
-                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#FFDC00] px-3 py-2 text-xs font-extrabold text-[#1F0A4D] transition hover:bg-eneba-yellowHover focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-none bg-[#FFDC00] px-3 py-2 text-xs font-extrabold text-[#1F0A4D] transition hover:bg-eneba-yellowHover focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isMoving ? (
                     <>
@@ -116,7 +116,7 @@ export default function WishlistPage() {
                   type="button"
                   onClick={() => removeFromWishlist(product.id)}
                   aria-label={`Remove ${product.title} from wishlist`}
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-eneba-card text-eneba-muted transition hover:border-eneba-magenta/60 hover:text-eneba-magenta focus:outline-none focus-visible:ring-2 focus-visible:ring-eneba-yellow"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-none border border-white/15 bg-eneba-card text-eneba-muted transition hover:border-eneba-magenta/60 hover:text-eneba-magenta focus:outline-none focus-visible:ring-2 focus-visible:ring-eneba-yellow"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 </button>

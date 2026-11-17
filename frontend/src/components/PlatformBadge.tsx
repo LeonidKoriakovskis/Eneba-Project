@@ -44,7 +44,7 @@ export function PlatformBadge({ platform, className = '' }: { platform: string; 
   const meta = getPlatformMeta(platform);
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md bg-black/35 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-white/10 ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-none bg-black/35 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-white/10 ${className}`}
     >
       <PlatformIcon platform={platform} className={`h-3.5 w-3.5 shrink-0 ${meta.accent}`} />
       <span>{meta.label}</span>

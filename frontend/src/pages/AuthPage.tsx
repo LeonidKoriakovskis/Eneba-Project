@@ -92,7 +92,7 @@ function PasswordField({
           type="button"
           onClick={onToggleVisible}
           aria-label={visible ? 'Hide password' : 'Show password'}
-          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-eneba-muted transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-none p-1 text-eneba-muted transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
         >
           {visible ? <FiEyeOff className="h-4 w-4" aria-hidden /> : <FiEye className="h-4 w-4" aria-hidden />}
         </button>
@@ -174,13 +174,13 @@ export default function AuthPage({ mode }: AuthPageProps) {
   };
 
   const inputClass =
-    'w-full rounded-xl bg-eneba-canvas/80 py-3 pl-11 pr-4 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
+    'w-full rounded-none bg-eneba-canvas/80 py-3 pl-11 pr-4 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
   const passwordInputClass =
-    'w-full rounded-xl bg-eneba-canvas/80 py-3 pl-11 pr-11 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
+    'w-full rounded-none bg-eneba-canvas/80 py-3 pl-11 pr-11 text-sm font-medium text-white placeholder-eneba-muted ring-1 ring-inset ring-white/15 transition focus:bg-eneba-canvas focus:outline-none focus:ring-2 focus:ring-eneba-yellow';
 
   return (
     <div className="mx-auto max-w-md py-6">
-      <div className="overflow-hidden rounded-2xl bg-eneba-card shadow-card ring-1 ring-white/10">
+      <div className="overflow-hidden rounded-none bg-eneba-card shadow-card ring-1 ring-white/10">
         {/* Mode Switch Tabs */}
         <div className="grid grid-cols-2 border-b border-white/10 bg-black/20">
           <Link
@@ -216,7 +216,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
           {error && (
             <div
               role="alert"
-              className="mb-5 flex items-start gap-2.5 rounded-xl bg-eneba-magenta/15 p-3.5 text-sm font-semibold text-white ring-1 ring-eneba-magenta/50"
+              className="mb-5 flex items-start gap-2.5 rounded-none bg-eneba-magenta/15 p-3.5 text-sm font-semibold text-white ring-1 ring-eneba-magenta/50"
             >
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-eneba-magenta" aria-hidden />
               <span>{error}</span>
@@ -306,7 +306,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
           </form>
 
           {!isRegister && (
-            <div className="mt-6 rounded-xl bg-eneba-canvas/60 p-4 ring-1 ring-white/10">
+            <div className="mt-6 rounded-none bg-eneba-canvas/60 p-4 ring-1 ring-white/10">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-eneba-teal">
@@ -318,7 +318,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                 <button
                   type="button"
                   onClick={fillDemoBuyer}
-                  className="shrink-0 rounded-lg bg-eneba-brand px-3 py-1.5 text-xs font-extrabold text-white ring-1 ring-white/15 transition hover:bg-eneba-cardHover"
+                  className="shrink-0 rounded-none bg-eneba-brand px-3 py-1.5 text-xs font-extrabold text-white ring-1 ring-white/15 transition hover:bg-eneba-cardHover"
                 >
                   Quick-fill
                 </button>

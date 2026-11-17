@@ -86,8 +86,8 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <div className="space-y-6" aria-busy="true" aria-label="Loading order">
-        <div className="h-32 animate-pulse rounded-2xl bg-eneba-card" />
-        <div className="h-44 animate-pulse rounded-2xl bg-eneba-card" />
+        <div className="h-32 animate-pulse rounded-none bg-eneba-card" />
+        <div className="h-44 animate-pulse rounded-none bg-eneba-card" />
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function OrderDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/orders"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-eneba-card px-3 py-2 text-xs font-bold text-eneba-muted ring-1 ring-white/10 hover:text-white"
+          className="inline-flex items-center gap-1.5 rounded-none bg-eneba-card px-3 py-2 text-xs font-bold text-eneba-muted ring-1 ring-white/10 hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden /> All Orders
         </Link>
@@ -112,10 +112,10 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Confirmation Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-eneba-brand via-eneba-card to-eneba-canvasLight p-6 shadow-card ring-2 ring-[#00D1B2]/50 sm:p-8">
+      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-eneba-brand via-eneba-card to-eneba-canvasLight p-6 shadow-card ring-2 ring-[#00D1B2]/50 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#00D1B2]/20 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#00D1B2]">
+            <div className="inline-flex items-center gap-2 rounded-none bg-[#00D1B2]/20 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#00D1B2]">
               {justPurchased ? <Sparkles className="h-3.5 w-3.5" aria-hidden /> : <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
               {order.status}
             </div>
@@ -130,7 +130,7 @@ export default function OrderDetailPage() {
             </p>
           </div>
 
-          <div className="rounded-xl bg-black/25 px-5 py-3.5 text-left ring-1 ring-white/10 sm:text-right">
+          <div className="rounded-none bg-black/25 px-5 py-3.5 text-left ring-1 ring-white/10 sm:text-right">
             <span className="block text-xs font-bold uppercase tracking-wider text-eneba-muted">Total Paid</span>
             <span className="text-3xl font-black text-eneba-yellow">{formatPrice(order.total_cents)}</span>
           </div>
@@ -171,7 +171,7 @@ export default function OrderDetailPage() {
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-eneba-card p-5 ring-1 ring-white/10">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-none bg-eneba-card p-5 ring-1 ring-white/10">
         <div className="flex items-center gap-3 text-sm text-eneba-muted">
           <Package className="h-5 w-5 text-eneba-yellow" aria-hidden />
           <span>Your keys are saved permanently in your account under My Orders.</span>

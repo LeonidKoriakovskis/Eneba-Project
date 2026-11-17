@@ -133,9 +133,9 @@ export default function ProductPage() {
       </nav>
 
       {/* Hero card */}
-      <section className="grid gap-6 rounded-2xl bg-eneba-card p-5 shadow-card ring-1 ring-white/10 md:grid-cols-[300px_minmax(0,1fr)] md:p-7 xl:grid-cols-[340px_minmax(0,1fr)]">
+      <section className="grid gap-6 rounded-none bg-eneba-card p-5 shadow-card ring-1 ring-white/10 md:grid-cols-[300px_minmax(0,1fr)] md:p-7 xl:grid-cols-[340px_minmax(0,1fr)]">
         <div className="mx-auto w-full max-w-[320px] md:max-w-none">
-          <div className="overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/15">
+          <div className="overflow-hidden rounded-none shadow-2xl ring-1 ring-white/15">
             <CoverImage src={p.cover_image_url} alt={p.title} className="aspect-[3/4] w-full" />
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function ProductPage() {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <PlatformBadge platform={p.platform} />
               <RegionTag region={p.region} />
-              <span className="rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">{p.genre}</span>
+              <span className="rounded-none bg-white/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">{p.genre}</span>
             </div>
             <h1 className="text-3xl font-black leading-tight md:text-4xl">{p.title}</h1>
             <p className="mt-2 text-sm text-eneba-muted">
@@ -163,9 +163,9 @@ export default function ProductPage() {
 
           {/* Featured / best offer */}
           {bestOffer ? (
-            <div className="mt-auto rounded-2xl bg-gradient-to-br from-eneba-brand to-eneba-canvasLight p-5 ring-2 ring-eneba-yellow/70">
+            <div className="mt-auto rounded-none bg-gradient-to-br from-eneba-brand to-eneba-canvasLight p-5 ring-2 ring-eneba-yellow/70">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-eneba-yellow px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-eneba-ink">
+                <span className="rounded-none bg-eneba-yellow px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-eneba-ink">
                   {bestOffer.is_featured ? 'Featured · Best offer' : 'Best offer'}
                 </span>
                 <span className="text-sm font-bold">{bestOffer.seller_name}</span>
@@ -190,7 +190,7 @@ export default function ProductPage() {
               )}
             </div>
           ) : (
-            <div className="mt-auto rounded-2xl bg-black/25 p-5 ring-1 ring-white/10">
+            <div className="mt-auto rounded-none bg-black/25 p-5 ring-1 ring-white/10">
               <p className="text-lg font-extrabold">Currently out of stock</p>
               <p className="mt-1 text-sm text-eneba-muted">All sellers are sold out right now. Check back soon for new keys.</p>
               <div className="mt-3 flex gap-2">
@@ -210,9 +210,9 @@ export default function ProductPage() {
         </div>
 
         {offers.length === 0 ? (
-          <p className="rounded-xl bg-eneba-card p-6 text-eneba-muted ring-1 ring-white/10">No seller offers available yet.</p>
+          <p className="rounded-none bg-eneba-card p-6 text-eneba-muted ring-1 ring-white/10">No seller offers available yet.</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-eneba-card ring-1 ring-white/10">
+          <div className="overflow-hidden rounded-none bg-eneba-card ring-1 ring-white/10">
             <div className="hidden grid-cols-[minmax(0,2fr)_1.2fr_1.2fr_1.4fr_auto] gap-4 border-b border-white/10 bg-black/20 px-5 py-3 text-xs font-extrabold uppercase tracking-widest text-eneba-muted md:grid">
               <span>Seller</span>
               <span>Rating</span>
@@ -234,8 +234,8 @@ export default function ProductPage() {
                   >
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="truncate font-extrabold">{offer.seller_name}</span>
-                      {isBest && <span className="rounded bg-eneba-yellow px-1.5 py-0.5 text-[10px] font-black uppercase text-eneba-ink">Best price</span>}
-                      {offer.is_featured && <span className="rounded bg-eneba-teal/20 px-1.5 py-0.5 text-[10px] font-black uppercase text-eneba-teal">Featured</span>}
+                      {isBest && <span className="rounded-none bg-eneba-yellow px-1.5 py-0.5 text-[10px] font-black uppercase text-eneba-ink">Best price</span>}
+                      {offer.is_featured && <span className="rounded-none bg-eneba-teal/20 px-1.5 py-0.5 text-[10px] font-black uppercase text-eneba-teal">Featured</span>}
                     </div>
                     <div><StarRating rating={offer.seller_rating} reviewCount={offer.review_count} /></div>
                     <div><StockLabel count={offer.available_keys_count} /></div>
@@ -264,14 +264,14 @@ export default function ProductPage() {
 function ProductSkeleton() {
   return (
     <div className="space-y-8" aria-busy="true" aria-label="Loading product">
-      <div className="h-5 w-64 animate-pulse rounded bg-eneba-card" />
-      <div className="grid gap-6 rounded-2xl bg-eneba-card p-7 md:grid-cols-[300px_1fr]">
-        <div className="aspect-[3/4] animate-pulse rounded-xl bg-eneba-canvasLight" />
+      <div className="h-5 w-64 animate-pulse rounded-none bg-eneba-card" />
+      <div className="grid gap-6 rounded-none bg-eneba-card p-7 md:grid-cols-[300px_1fr]">
+        <div className="aspect-[3/4] animate-pulse rounded-none bg-eneba-canvasLight" />
         <div className="space-y-4">
-          <div className="h-6 w-40 animate-pulse rounded bg-eneba-canvasLight" />
-          <div className="h-10 w-3/4 animate-pulse rounded bg-eneba-canvasLight" />
-          <div className="h-24 w-full animate-pulse rounded bg-eneba-canvasLight" />
-          <div className="h-36 w-full animate-pulse rounded-2xl bg-eneba-canvasLight" />
+          <div className="h-6 w-40 animate-pulse rounded-none bg-eneba-canvasLight" />
+          <div className="h-10 w-3/4 animate-pulse rounded-none bg-eneba-canvasLight" />
+          <div className="h-24 w-full animate-pulse rounded-none bg-eneba-canvasLight" />
+          <div className="h-36 w-full animate-pulse rounded-none bg-eneba-canvasLight" />
         </div>
       </div>
     </div>

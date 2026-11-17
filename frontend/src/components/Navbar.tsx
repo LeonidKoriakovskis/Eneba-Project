@@ -7,9 +7,9 @@ import { AccountMenu } from './AccountMenu';
 
 export function Logo() {
   return (
-    <Link to="/" aria-label="Eneba home" className="flex shrink-0 items-center gap-2 rounded-lg focus:outline-none focus-visible:shadow-glow">
+    <Link to="/" aria-label="Eneba home" className="flex shrink-0 items-center gap-2 rounded-none focus:outline-none focus-visible:shadow-glow">
       <svg viewBox="0 0 32 32" className="h-9 w-9" aria-hidden>
-        <rect width="32" height="32" rx="9" fill="#FFDC00" />
+        <rect width="32" height="32" rx="0" fill="#FFDC00" />
         <path d="M10 8h12v3.5h-8.2v3H21v3.5h-7.2v3H22V24H10z" fill="#1F0A4D" />
       </svg>
       <span className="text-2xl font-black lowercase tracking-tight text-white">eneba</span>
@@ -23,7 +23,7 @@ function WishlistButton() {
     <Link
       to="/wishlist"
       aria-label={`Wishlist, ${count} item${count === 1 ? '' : 's'}`}
-      className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg bg-eneba-canvas/60 ring-1 ring-white/10 transition hover:bg-eneba-canvas focus:outline-none focus-visible:shadow-glow"
+      className="relative inline-flex h-11 w-11 items-center justify-center rounded-none bg-eneba-canvas/60 ring-1 ring-white/10 transition hover:bg-eneba-canvas focus:outline-none focus-visible:shadow-glow"
     >
       <Heart
         className={`h-5 w-5 transition ${count > 0 ? 'fill-eneba-magenta text-eneba-magenta' : 'text-white'}`}
@@ -32,7 +32,7 @@ function WishlistButton() {
       {count > 0 && (
         <span
           data-testid="wishlist-badge"
-          className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-eneba-magenta px-1 text-[11px] font-black leading-none text-white ring-2 ring-eneba-brand"
+          className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-none bg-eneba-magenta px-1 text-[11px] font-black leading-none text-white ring-2 ring-eneba-brand"
         >
           {count > 99 ? '99+' : count}
         </span>
@@ -48,13 +48,13 @@ function CartButton() {
       type="button"
       onClick={openDrawer}
       aria-label={`Open cart, ${itemCount} item${itemCount === 1 ? '' : 's'}`}
-      className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg bg-eneba-canvas/60 ring-1 ring-white/10 transition hover:bg-eneba-canvas focus:outline-none focus-visible:shadow-glow"
+      className="relative inline-flex h-11 w-11 items-center justify-center rounded-none bg-eneba-canvas/60 ring-1 ring-white/10 transition hover:bg-eneba-canvas focus:outline-none focus-visible:shadow-glow"
     >
       <ShoppingCart className="h-5 w-5" aria-hidden />
       {itemCount > 0 && (
         <span
           data-testid="cart-badge"
-          className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-eneba-magenta px-1 text-[11px] font-black leading-none text-white ring-2 ring-eneba-brand"
+          className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-none bg-eneba-magenta px-1 text-[11px] font-black leading-none text-white ring-2 ring-eneba-brand"
         >
           {itemCount > 99 ? '99+' : itemCount}
         </span>
@@ -73,7 +73,7 @@ export function Navbar() {
           <NavLink
             to="/store"
             className={({ isActive }) =>
-              `rounded-lg px-3 py-2 text-sm font-extrabold transition hover:bg-white/10 ${isActive ? 'text-eneba-yellow' : 'text-white'}`
+              `rounded-none px-3 py-2 text-sm font-extrabold transition hover:bg-white/10 ${isActive ? 'text-eneba-yellow' : 'text-white'}`
             }
           >
             Store

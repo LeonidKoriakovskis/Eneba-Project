@@ -39,7 +39,7 @@ function Countdown({ ms }: { ms: number }) {
   const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
   const s = String(total % 60).padStart(2, '0');
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md bg-black/30 px-2.5 py-1 font-mono text-sm font-bold tabular-nums text-white">
+    <span className="inline-flex items-center gap-1.5 rounded-none bg-black/30 px-2.5 py-1 font-mono text-sm font-bold tabular-nums text-white">
       <Clock className="h-4 w-4 text-eneba-yellow" aria-hidden />
       {h}:{m}:{s}
     </span>
@@ -78,7 +78,7 @@ export function ProductBlock({ block }: { block: HomepageBlock }) {
           {block.title}
         </h2>
         {badge && (
-          <span className="rounded-md bg-eneba-magenta px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-white">
+          <span className="rounded-none bg-eneba-magenta px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-white">
             {badge}
           </span>
         )}
@@ -91,7 +91,7 @@ export function ProductBlock({ block }: { block: HomepageBlock }) {
                 type="button"
                 aria-label="Scroll left"
                 onClick={() => scrollBy(-1)}
-                className="rounded-full bg-eneba-card p-1.5 ring-1 ring-white/10 hover:bg-eneba-cardHover"
+                className="rounded-none bg-eneba-card p-1.5 ring-1 ring-white/10 hover:bg-eneba-cardHover"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -99,7 +99,7 @@ export function ProductBlock({ block }: { block: HomepageBlock }) {
                 type="button"
                 aria-label="Scroll right"
                 onClick={() => scrollBy(1)}
-                className="rounded-full bg-eneba-card p-1.5 ring-1 ring-white/10 hover:bg-eneba-cardHover"
+                className="rounded-none bg-eneba-card p-1.5 ring-1 ring-white/10 hover:bg-eneba-cardHover"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>

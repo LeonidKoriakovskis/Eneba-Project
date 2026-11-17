@@ -103,9 +103,9 @@ export function ProductCard({ product, className = '', moveToCartOnAdd = false }
 
   return (
     <article
-      className={`group relative flex h-[380px] flex-col overflow-hidden rounded-xl bg-eneba-card shadow-card ring-1 ring-white/10 transition-colors duration-300 hover:ring-eneba-yellow/70 focus-within:ring-2 focus-within:ring-eneba-yellow ${className}`}
+      className={`group relative flex h-[380px] flex-col overflow-hidden rounded-none bg-eneba-card shadow-card ring-1 ring-white/10 transition-colors duration-300 hover:ring-eneba-yellow/70 focus-within:ring-2 focus-within:ring-eneba-yellow ${className}`}
     >
-      {/* Cover artwork + centered bottom platform strip + wishlist button */}
+      {/* Cover artwork + wishlist button */}
       <div className="relative h-[236px] w-full shrink-0 overflow-hidden bg-eneba-canvasLight">
         <Link to={`/product/${product.slug}`} tabIndex={-1} aria-label={product.title} className="block h-full w-full">
           <CoverImage
@@ -122,7 +122,7 @@ export function ProductCard({ product, className = '', moveToCartOnAdd = false }
           onClick={handleToggleWishlist}
           aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           aria-pressed={wishlisted}
-          className={`absolute right-2.5 top-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#12052E]/75 text-white ring-1 ring-white/15 backdrop-blur-sm transition-all duration-200 hover:bg-[#12052E] hover:text-eneba-magenta focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-eneba-yellow ${
+          className={`absolute right-2.5 top-2.5 z-20 flex h-8 w-8 items-center justify-center rounded-none bg-[#12052E]/75 text-white ring-1 ring-white/15 backdrop-blur-sm transition-all duration-200 hover:bg-[#12052E] hover:text-eneba-magenta focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-eneba-yellow ${
             wishlisted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
           }`}
         >
@@ -130,7 +130,7 @@ export function ProductCard({ product, className = '', moveToCartOnAdd = false }
         </button>
 
         {!inStock && (
-          <span className="pointer-events-none absolute inset-x-3 top-1/2 -translate-y-1/2 rounded-md bg-black/75 px-2.5 py-1 text-center text-xs font-extrabold uppercase tracking-wide text-white">
+          <span className="pointer-events-none absolute inset-x-3 top-1/2 -translate-y-1/2 rounded-none bg-black/75 px-2.5 py-1 text-center text-xs font-extrabold uppercase tracking-wide text-white">
             Out of stock
           </span>
         )}
@@ -181,7 +181,7 @@ export function ProductCard({ product, className = '', moveToCartOnAdd = false }
             type="button"
             disabled={!inStock || adding}
             onClick={handleQuickAdd}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#FFDC00] px-3 py-2 text-xs font-extrabold text-[#1F0A4D] transition hover:bg-eneba-yellowHover focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-none bg-[#FFDC00] px-3 py-2 text-xs font-extrabold text-[#1F0A4D] transition hover:bg-eneba-yellowHover focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {adding ? (
               <>
@@ -203,7 +203,7 @@ export function ProductCard({ product, className = '', moveToCartOnAdd = false }
 
           <Link
             to={`/product/${product.slug}`}
-            className="inline-flex w-full items-center justify-center rounded-lg border border-white/30 px-3 py-1.5 text-xs font-extrabold text-white transition hover:border-[#FFDC00] hover:text-[#FFDC00] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFDC00]"
+            className="inline-flex w-full items-center justify-center rounded-none border border-white/30 px-3 py-1.5 text-xs font-extrabold text-white transition hover:border-[#FFDC00] hover:text-[#FFDC00] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFDC00]"
           >
             View Offers
           </Link>
@@ -215,13 +215,13 @@ export function ProductCard({ product, className = '', moveToCartOnAdd = false }
 
 export function ProductCardSkeleton() {
   return (
-    <div className="h-[380px] overflow-hidden rounded-xl bg-eneba-card ring-1 ring-white/5" aria-hidden>
+    <div className="h-[380px] overflow-hidden rounded-none bg-eneba-card ring-1 ring-white/5" aria-hidden>
       <div className="h-[236px] animate-pulse bg-eneba-canvasLight" />
       <div className="space-y-2 p-3.5">
-        <div className="h-4 w-11/12 animate-pulse rounded bg-eneba-canvasLight" />
-        <div className="h-4 w-2/3 animate-pulse rounded bg-eneba-canvasLight" />
-        <div className="h-3.5 w-1/3 animate-pulse rounded bg-eneba-canvasLight" />
-        <div className="h-6 w-1/2 animate-pulse rounded bg-eneba-canvasLight" />
+        <div className="h-4 w-11/12 animate-pulse rounded-none bg-eneba-canvasLight" />
+        <div className="h-4 w-2/3 animate-pulse rounded-none bg-eneba-canvasLight" />
+        <div className="h-3.5 w-1/3 animate-pulse rounded-none bg-eneba-canvasLight" />
+        <div className="h-6 w-1/2 animate-pulse rounded-none bg-eneba-canvasLight" />
       </div>
     </div>
   );

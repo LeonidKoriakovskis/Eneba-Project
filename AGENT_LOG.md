@@ -1007,3 +1007,31 @@ Verify `npm test` and `npm run build` pass with zero errors.
 ### 3. Verification Results
 - `npm --prefix "Eneba Project/frontend" test`: **14/14 tests passed** (`236.70ms`).
 - `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1631 modules transformed`, `dist/assets/index-CuaJBWER.css 44.55 kB`, `dist/assets/index-DX9l-WnX.js 309.01 kB`, built in `3.92s`).
+
+
+---
+
+## Turn 18: Sharp Square Eneba Storefront Geometry (`rounded-none`)
+
+### 1. User Prompt
+```text
+Let's tighten our visual fidelity to real eneba.com by switching from soft rounded corners to Eneba's signature sharp, square geometry across cards, buttons, badges, and inputs. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Update the frontend styling across `frontend/src/index.css`, `ProductCard.tsx`, `HeroBanner.tsx`, `Navbar.tsx`, `StorePage.tsx`, `ProductPage.tsx`, `CartPage.tsx`, `CartDrawer.tsx`, `CheckoutPage.tsx`, `AuthPage.tsx`, and `OrdersPage.tsx`:
+- Eliminate large border radii (`rounded-lg`, `rounded-xl`, `rounded-2xl`) on game cards, action buttons (`.btn-yellow`, `.btn-outline`), badges/tags, search inputs, filter sidebars, dropdown menus, and modal containers—replacing them with sharp square corners (`rounded-none`, keeping subtle `rounded-sm` only where strictly appropriate like tiny status dots or avatars).
+- Keep all hover transitions, crisp 1px borders (`border-white/15` / `hover:border-[#FFDC00]`), and layout spacing intact so the entire storefront has Eneba's authentic angular, high-contrast marketplace look.
+
+Verify `npm test` and `npm run build` pass with zero errors.
+```
+
+### 2. Summary of Changes
+Updated storefront border radii to sharp square (`rounded-none`) geometry while preserving all hover transitions, spacing, and 1px borders (`ring-1` / `border-white/15`):
+- **Global Styles (`frontend/src/index.css`)**: Switched `.btn-yellow`, `.btn-outline`, and `::-webkit-scrollbar-thumb` to sharp `rounded-none` / `border-radius: 0px`.
+- **Navigation & Dropdowns (`Navbar.tsx`, `SearchBar.tsx`, `AccountMenu.tsx`, `CustomSelect.tsx`)**: Switched the logo mark (`rx="0"`), search bar input/submit/clear/autocomplete container, wishlist & cart icon buttons and count badges, account dropdown menu (`rounded-sm` retained for avatar initial badge), and `CustomSelect` combobox/listbox/options to `rounded-none`.
+- **Catalog, Badges & Homepage (`ProductCard.tsx`, `HeroBanner.tsx`, `ProductBlock.tsx`, `HomePage.tsx`, `Badges.tsx`, `PlatformBadge.tsx`, `CoverImage.tsx`, `ErrorState.tsx`, `FilterSidebar.tsx`, `StorePage.tsx`, `ProductPage.tsx`)**: Applied `rounded-none` to product cards/skeletons, wishlist buttons, platform/region/discount tags, hero banner carousel & arrow controls, filter sidebar, multi-select filter pills, price inputs, filter chips, product detail hero, and seller offer rows.
+- **Cart, Wishlist, Auth, Checkout & Orders (`CartPage.tsx`, `CartDrawer.tsx`, `WishlistPage.tsx`, `CheckoutPage.tsx`, `AuthPage.tsx`, `OrdersPage.tsx`, `OrderDetailPage.tsx`, `OrderKeyCard.tsx`)**: Applied `rounded-none` to item cards, slide-over cart drawer, wishlist cards/buttons, payment selectors, auth tabs/inputs/buttons, order receipts, digital key bars, and the Key Redemption simulator modal.
+
+### 3. Verification Results
+- Recursive audit of `frontend/src` confirmed zero remaining `rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-2xl`, or `rounded-full` component styles (leaving only the blurred background glow effect inside `CoverImage.tsx`).
+- `npm --prefix "Eneba Project/frontend" test`: **14/14 tests passed** (`234.39ms`).
+- `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1631 modules transformed`, `dist/assets/index-CWKn3345.css 44.44 kB`, `dist/assets/index-jchjkFDs.js 309.29 kB`, built in `4.13s`).

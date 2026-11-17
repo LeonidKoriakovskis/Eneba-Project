@@ -97,13 +97,13 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
 
   return (
     <>
-      <article className="rounded-2xl bg-eneba-card p-5 shadow-card ring-1 ring-white/10">
+      <article className="rounded-none bg-eneba-card p-5 shadow-card ring-1 ring-white/10">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <PlatformBadge platform={item.platform} />
               <RegionTag region={item.region} />
-              <span className="inline-flex items-center gap-1 rounded-md bg-[#00D1B2]/15 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-[#00D1B2] ring-1 ring-inset ring-[#00D1B2]/40">
+              <span className="inline-flex items-center gap-1 rounded-none bg-[#00D1B2]/15 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-[#00D1B2] ring-1 ring-inset ring-[#00D1B2]/40">
                 <KeyRound className="h-3 w-3" aria-hidden />
                 Digital Key
               </span>
@@ -126,7 +126,7 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
         </div>
 
         {/* License key reveal & copy bar */}
-        <div className="mt-4 flex flex-col gap-3 rounded-xl bg-eneba-canvas/90 p-3.5 ring-1 ring-[#00D1B2]/35 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-3 rounded-none bg-eneba-canvas/90 p-3.5 ring-1 ring-[#00D1B2]/35 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <span className="block text-[10px] font-extrabold uppercase tracking-widest text-[#00D1B2]">
               Activation Key
@@ -145,7 +145,7 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
             <button
               type="button"
               onClick={() => setRevealed((r) => !r)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-eneba-brand px-3.5 py-2 text-xs font-extrabold text-white ring-1 ring-white/15 transition hover:bg-eneba-cardHover"
+              className="inline-flex items-center gap-1.5 rounded-none bg-eneba-brand px-3.5 py-2 text-xs font-extrabold text-white ring-1 ring-white/15 transition hover:bg-eneba-cardHover"
             >
               {revealed ? (
                 <>
@@ -161,7 +161,7 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
             <button
               type="button"
               onClick={handleCopy}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-extrabold transition ${
+              className={`inline-flex items-center gap-1.5 rounded-none px-4 py-2 text-xs font-extrabold transition ${
                 copied
                   ? 'bg-[#00D1B2] text-eneba-ink'
                   : 'bg-eneba-yellow text-eneba-ink hover:bg-eneba-yellowHover'
@@ -181,7 +181,7 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
             <button
               type="button"
               onClick={handleOpenRedeem}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#00D1B2]/15 px-3.5 py-2 text-xs font-extrabold text-[#00D1B2] ring-1 ring-inset ring-[#00D1B2]/45 transition hover:bg-[#00D1B2]/25"
+              className="inline-flex items-center gap-1.5 rounded-none bg-[#00D1B2]/15 px-3.5 py-2 text-xs font-extrabold text-[#00D1B2] ring-1 ring-inset ring-[#00D1B2]/45 transition hover:bg-[#00D1B2]/25"
             >
               <ShieldCheck className="h-4 w-4" aria-hidden />
               Verify / Test Redeem
@@ -209,10 +209,10 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
             className="fixed inset-0 bg-black/70 backdrop-blur-sm"
           />
 
-          <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-eneba-card shadow-2xl ring-1 ring-white/15">
+          <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-none bg-eneba-card shadow-2xl ring-1 ring-white/15">
             <div className={`bg-gradient-to-r ${clientTheme.accent} flex items-center justify-between border-b border-white/10 px-6 py-4`}>
               <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/35 text-white ring-1 ring-white/15">
+                <span className="flex h-9 w-9 items-center justify-center rounded-none bg-black/35 text-white ring-1 ring-white/15">
                   <PlatformIcon platform={item.platform} className="h-5 w-5" />
                 </span>
                 <div>
@@ -228,7 +228,7 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
                 type="button"
                 onClick={() => setRedeemOpen(false)}
                 aria-label="Close modal"
-                className="rounded-lg p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
+                className="rounded-none p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -255,19 +255,19 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
                   readOnly
                   value={item.license_key}
                   aria-label="Activation code"
-                  className="w-full rounded-xl bg-eneba-canvas px-4 py-3 font-mono text-lg font-black tracking-widest text-white ring-1 ring-[#00D1B2]/50 focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
+                  className="w-full rounded-none bg-eneba-canvas px-4 py-3 font-mono text-lg font-black tracking-widest text-white ring-1 ring-[#00D1B2]/50 focus:outline-none focus:ring-2 focus:ring-eneba-yellow"
                 />
               </label>
 
               {verifying ? (
-                <div className="flex items-center gap-3 rounded-xl bg-eneba-canvas/70 p-4 text-sm font-bold text-white ring-1 ring-white/10">
+                <div className="flex items-center gap-3 rounded-none bg-eneba-canvas/70 p-4 text-sm font-bold text-white ring-1 ring-white/10">
                   <Loader2 className="h-5 w-5 animate-spin text-eneba-yellow" aria-hidden />
                   <span>Validating license signature with {item.platform} simulator…</span>
                 </div>
               ) : (
                 <div
                   role="status"
-                  className="flex items-start gap-3 rounded-xl bg-[#00D1B2]/15 p-4 ring-1 ring-[#00D1B2]/45"
+                  className="flex items-start gap-3 rounded-none bg-[#00D1B2]/15 p-4 ring-1 ring-[#00D1B2]/45"
                 >
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#00D1B2]" aria-hidden />
                   <div>
