@@ -449,6 +449,9 @@ test('wishlistReducer persists items in eneba_wishlist, Navbar shows live count 
   const navbarHtml = renderWithProviders(React.createElement(Navbar), ['/']);
   assert.match(navbarHtml, /href="\/wishlist"/);
   assert.match(navbarHtml, /data-testid="wishlist-badge"[^>]*>1<\/span>/);
+  assert.match(navbarHtml, />eneba<\/span>/);
+  assert.match(navbarHtml, />DEMO<\/span>/);
+  assert.match(navbarHtml, /<polygon/);
 
   const fullWishlistHtml = renderWithProviders(React.createElement(WishlistPage), ['/wishlist']);
   assert.match(fullWishlistHtml, /My Wishlist/);

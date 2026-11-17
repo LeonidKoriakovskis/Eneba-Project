@@ -1035,3 +1035,33 @@ Updated storefront border radii to sharp square (`rounded-none`) geometry while 
 - Recursive audit of `frontend/src` confirmed zero remaining `rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-2xl`, or `rounded-full` component styles (leaving only the blurred background glow effect inside `CoverImage.tsx`).
 - `npm --prefix "Eneba Project/frontend" test`: **14/14 tests passed** (`234.39ms`).
 - `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1631 modules transformed`, `dist/assets/index-CWKn3345.css 44.44 kB`, `dist/assets/index-jchjkFDs.js 309.29 kB`, built in `4.13s`).
+
+
+---
+
+## Turn 19: Geometric Brand Emblem (`DEMO` Tag) & Footer Attribution
+
+### 1. User Prompt
+```text
+Let's upgrade the navbar brand mark in `frontend/src/components/Navbar.tsx` (and footer) to match Eneba's visual identity cleanly without impersonating the production site. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`:
+
+1. NAVBAR LOGO (`frontend/src/components/Navbar.tsx`):
+   - Create a crisp geometric SVG brand emblem inspired by Eneba's slanted polygon/bolt aesthetic paired with bold lowercase `eneba` typography and a subtle uppercase `DEMO` tag (`border border-[#FFDC00]/40 text-[#FFDC00] text-[10px] px-1.5 py-0.5 font-extrabold tracking-widest`).
+
+2. FOOTER ATTRIBUTION:
+   - Ensure the site footer includes a clean, understated line stating: `"Marketplace prototype built for the Eneba Engineering Internship Assignment • Test mode only (no real transactions)."`
+
+Verify `npm run build` passes cleanly.
+```
+
+### 2. Summary of Changes
+1. **Navbar Brand Emblem (`frontend/src/components/Navbar.tsx`)**:
+   - Upgraded `Logo` with a geometric slanted polygon SVG emblem featuring `#FFDC00`, `#FD5A20`, and `#00D1B2` angular facets over `#1F0A4D`, paired with bold lowercase `eneba` wordmark and a subtle `DEMO` badge (`border border-[#FFDC00]/40 text-[#FFDC00] text-[10px] px-1.5 py-0.5 font-extrabold tracking-widest`).
+2. **Footer Attribution (`frontend/src/components/Layout.tsx`)**:
+   - Added `<Logo />` and `/wishlist` link alongside `Store` and `My Orders` in the footer, and updated the attribution notice to read: `"Marketplace prototype built for the Eneba Engineering Internship Assignment • Test mode only (no real transactions)."`.
+3. **Automated Tests (`frontend/tests/purchaseFlow.test.mjs`)**:
+   - Added assertions verifying that `Navbar` renders the SVG `<polygon>` emblem, `eneba` wordmark, and `DEMO` tag.
+
+### 3. Verification Results
+- `npm --prefix "Eneba Project/frontend" test`: **14/14 tests passed** (`243.22ms`).
+- `npm --prefix "Eneba Project/frontend" run build` (`tsc -b && vite build`): exited with code `0` (`1631 modules transformed`, `dist/assets/index-D6L8_XB5.css 44.58 kB`, `dist/assets/index-CRcwiVPB.js 309.97 kB`, built in `4.66s`).

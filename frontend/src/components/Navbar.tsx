@@ -7,12 +7,21 @@ import { AccountMenu } from './AccountMenu';
 
 export function Logo() {
   return (
-    <Link to="/" aria-label="Eneba home" className="flex shrink-0 items-center gap-2 rounded-none focus:outline-none focus-visible:shadow-glow">
-      <svg viewBox="0 0 32 32" className="h-9 w-9" aria-hidden>
-        <rect width="32" height="32" rx="0" fill="#FFDC00" />
-        <path d="M10 8h12v3.5h-8.2v3H21v3.5h-7.2v3H22V24H10z" fill="#1F0A4D" />
+    <Link
+      to="/"
+      aria-label="Eneba demo home"
+      className="group flex shrink-0 items-center gap-2.5 rounded-none focus:outline-none focus-visible:shadow-glow"
+    >
+      <svg viewBox="0 0 36 36" className="h-9 w-9 shrink-0 transition-transform duration-200 group-hover:scale-105" aria-hidden>
+        <polygon points="4,2 34,2 30,34 0,34" fill="#1F0A4D" stroke="#FFDC00" strokeWidth="1.5" />
+        <polygon points="9,7 29,7 25,15 7,15" fill="#FFDC00" />
+        <polygon points="8,16.5 23,16.5 21,21.5 6.5,21.5" fill="#FD5A20" />
+        <polygon points="6,23 26,23 23.5,29 4.5,29" fill="#00D1B2" />
       </svg>
       <span className="text-2xl font-black lowercase tracking-tight text-white">eneba</span>
+      <span className="border border-[#FFDC00]/40 bg-[#1F0A4D]/60 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-[#FFDC00]">
+        DEMO
+      </span>
     </Link>
   );
 }
