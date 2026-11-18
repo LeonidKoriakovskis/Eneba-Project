@@ -169,6 +169,10 @@ func (s *CatalogService) GetProductBySlug(ctx context.Context, slug string) (*mo
 
 // EnsureCatalogArtwork keeps seeded vertical box art and hero banner images synced on startup.
 func (s *CatalogService) EnsureCatalogArtwork(ctx context.Context) error {
+	if err := s.repo.EnsureFeaturedGTAVI(ctx); err != nil {
+		return err
+	}
+
 	covers := map[string]string{
 		"11111111-0000-0000-0000-000000000001": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/library_600x900.jpg",
 		"11111111-0000-0000-0000-000000000002": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/library_600x900.jpg",
@@ -186,12 +190,14 @@ func (s *CatalogService) EnsureCatalogArtwork(ctx context.Context) error {
 		"11111111-0000-0000-0000-000000000014": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2344520/library_600x900.jpg",
 		"11111111-0000-0000-0000-000000000015": "https://upload.wikimedia.org/wikipedia/en/f/fb/The_Legend_of_Zelda_Tears_of_the_Kingdom_cover.jpg",
 		"11111111-0000-0000-0000-000000000016": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2358720/library_600x900.jpg",
+		"11111111-0000-0000-0000-000000000017": "https://upload.wikimedia.org/wikipedia/en/4/46/Grand_Theft_Auto_VI.png",
 	}
 	if err := s.repo.SyncProductCovers(ctx, covers); err != nil {
 		return err
 	}
 
 	heroBanners := map[string]string{
+		"11111111-0000-0000-0000-000000000017": "https://upload.wikimedia.org/wikipedia/en/4/46/Grand_Theft_Auto_VI.png",
 		"11111111-0000-0000-0000-000000000016": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2358720/library_hero.jpg",
 		"11111111-0000-0000-0000-000000000002": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/library_hero.jpg",
 		"11111111-0000-0000-0000-000000000001": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1091500/library_hero.jpg",

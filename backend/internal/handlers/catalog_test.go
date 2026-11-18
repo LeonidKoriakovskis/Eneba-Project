@@ -432,3 +432,86 @@ func TestProductBySlugEndpoint_NotFound(t *testing.T) {
 		t.Errorf("Expected status 404, got %d", rec.Code)
 	}
 }
+
+func TestGrandTheftAutoVI_SpotlightAndCatalog(t *testing.T) {
+	router := setupTestRouter(t)
+
+	// 1. Verify homepage hero_banner and best_sellers feature GTA VI #1
+	homeReq := httptest.NewRequest(http.MethodGet, "/api/homepage", nil)
+	homeRec := httptest.NewRecorder()
+	router.ServeHTTP(homeRec, homeReq)
+	if homeRec.Code != http.StatusOK {
+		t.Fatalf("GET /api/homepage: expected 200, got %d", homeRec.Code)
+	}
+	var homeRes struct {
+		Blocks []models.HydratedHomepageBlock `json:"blocks"`
+	}
+	if err := json.Unmarshal(homeRec.Body.Bytes(), &homeRes); err != nil {
+		t.Fatalf("decode homepage: %v", err)
+	}
+
+	checkedHero := false
+	checkedBestSellers := false
+	for _, b := range homeRes.Blocks {
+		if b.BlockType == "hero_banner" {
+			checkedHero = true
+			rawItems, ok := b.Config["items"].([]interface{})
+			if !ok || len(rawItems) == 0 {
+				t.Fatalf("hero_banner items missing or empty")
+			}
+			firstSlide, _ := rawItems[0].(map[string]interface{})
+			if slug, _ := firstSlide["product_slug"].(string); slug != "grand-theft-auto-vi" {
+				t.Errorf("expected hero_banner slide #1 product_slug='grand-theft-auto-vi', got %q", slug)
+			}
+		}
+		if b.BlockType == "best_sellers" {
+			checkedBestSellers = true
+			if len(b.Products) == 0 || b.Products[0].Slug != "grand-theft-auto-vi" {
+				t.Errorf("expected best_sellers product #1 to be 'grand-theft-auto-vi', got %+v", b.Products)
+			}
+		}
+	}
+	if !checkedHero || !checkedBestSellers {
+		t.Fatalf("expected both hero_banner and best_sellers blocks (hero=%v bestSellers=%v)", checkedHero, checkedBestSellers)
+	}
+
+	// 2. Verify GET /api/products?sort=popular puts GTA VI at #1
+	popReq := httptest.NewRequest(http.MethodGet, "/api/products?sort=popular&limit=20&offset=0", nil)
+	popRec := httptest.NewRecorder()
+	router.ServeHTTP(popRec, popReq)
+	if popRec.Code != http.StatusOK {
+		t.Fatalf("GET /api/products?sort=popular: expected 200, got %d", popRec.Code)
+	}
+	var popRes models.ProductListResponse
+	if err := json.Unmarshal(popRec.Body.Bytes(), &popRes); err != nil {
+		t.Fatalf("decode popular products: %v", err)
+	}
+	if len(popRes.Products) == 0 || popRes.Products[0].Slug != "grand-theft-auto-vi" {
+		t.Fatalf("expected #1 most popular game to be 'grand-theft-auto-vi', got %+v", popRes.Products)
+	}
+
+	// 3. Verify GET /api/products/grand-theft-auto-vi has 3 offers and >= 10 available keys
+	detailReq := httptest.NewRequest(http.MethodGet, "/api/products/grand-theft-auto-vi", nil)
+	detailRec := httptest.NewRecorder()
+	router.ServeHTTP(detailRec, detailReq)
+	if detailRec.Code != http.StatusOK {
+		t.Fatalf("GET /api/products/grand-theft-auto-vi: expected 200, got %d. Body: %s", detailRec.Code, detailRec.Body.String())
+	}
+	var detail models.ProductDetail
+	if err := json.Unmarshal(detailRec.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("decode GTA VI detail: %v", err)
+	}
+	if len(detail.Offers) != 3 {
+		t.Fatalf("expected 3 competing seller offers for GTA VI, got %d", len(detail.Offers))
+	}
+	totalKeys := 0
+	for _, o := range detail.Offers {
+		totalKeys += o.AvailableKeysCount
+		if o.OriginalPriceCents != 8999 {
+			t.Errorf("offer %s original_price_cents: expected 8999, got %d", o.SellerName, o.OriginalPriceCents)
+		}
+	}
+	if totalKeys < 10 {
+		t.Errorf("expected at least 10 available keys for GTA VI, got %d", totalKeys)
+	}
+}

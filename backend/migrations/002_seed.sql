@@ -9,7 +9,7 @@ INSERT INTO users (id, email, password_hash, full_name) VALUES
 ('a0000000-0000-0000-0000-000000000001', 'gamer@eneba-demo.com', '$2a$10$lKRIp9yD6rEfPrIgdRHOLuTzTybdqV0JIQsT3kt45ZNqeb8rCdyHm', 'Alex Gamer'),
 ('a0000000-0000-0000-0000-000000000002', 'intern@eneba-demo.com', '$2a$10$lKRIp9yD6rEfPrIgdRHOLuTzTybdqV0JIQsT3kt45ZNqeb8rCdyHm', 'Eneba Candidate');
 
--- 2. SEED 16 REALISTIC DIGITAL GAMES
+-- 2. SEED 17 REALISTIC DIGITAL GAMES
 INSERT INTO products (id, title, slug, description, cover_image_url, platform, region, genre, release_date) VALUES
 (
     '11111111-0000-0000-0000-000000000001',
@@ -186,6 +186,17 @@ INSERT INTO products (id, title, slug, description, cover_image_url, platform, r
     'GLOBAL',
     'Action RPG',
     '2024-08-20'
+),
+(
+    '11111111-0000-0000-0000-000000000017',
+    'Grand Theft Auto VI',
+    'grand-theft-auto-vi',
+    'Head to the state of Leonida, home to the neon-soaked streets of Vice City and beyond, in the biggest, most immersive evolution of the Grand Theft Auto series yet. Tags: Action, Open World, Blockbuster.',
+    'https://upload.wikimedia.org/wikipedia/en/4/46/Grand_Theft_Auto_VI.png',
+    'PSN',
+    'GLOBAL',
+    'Action / Open World / Blockbuster',
+    '2025-11-19'
 );
 
 -- 3. SEED 2 TO 4 SELLER OFFERS PER GAME
@@ -273,6 +284,12 @@ INSERT INTO seller_offers (id, product_id, seller_name, seller_rating, review_co
 ('20000016-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000016', 'NexusGaming', 4.98, 4400, 4799, 6999, true),
 ('20000016-0000-0000-0000-000000000002', '11111111-0000-0000-0000-000000000016', 'SpeedyKeys LTD', 4.92, 1260, 4950, 6999, false),
 ('20000016-0000-0000-0000-000000000003', '11111111-0000-0000-0000-000000000016', 'AlphaKeys Global', 4.87, 510, 5100, 6999, false);
+
+-- Offers for Game 17 (Grand Theft Auto VI)
+INSERT INTO seller_offers (id, product_id, seller_name, seller_rating, review_count, price_cents, original_price_cents, is_featured) VALUES
+('20000017-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000017', 'RockstarVault', 4.99, 6420, 6999, 8999, true),
+('20000017-0000-0000-0000-000000000002', '11111111-0000-0000-0000-000000000017', 'KeyEmpire', 4.95, 2890, 7250, 8999, false),
+('20000017-0000-0000-0000-000000000003', '11111111-0000-0000-0000-000000000017', 'NordicKeys', 4.91, 1540, 7499, 8999, false);
 
 -- 4. SEED 3 TO 4 DIGITAL KEYS FOR EACH SELLER OFFER (FORMAT: XXXX-YYYY-ZZZZ)
 INSERT INTO digital_keys (seller_offer_id, license_key, status) VALUES
@@ -417,7 +434,21 @@ INSERT INTO digital_keys (seller_offer_id, license_key, status) VALUES
 ('20000016-0000-0000-0000-000000000002', 'BMWK-SK02-3328', 'AVAILABLE'),
 ('20000016-0000-0000-0000-000000000003', 'BMWK-AK03-8812', 'AVAILABLE'),
 ('20000016-0000-0000-0000-000000000003', 'BMWK-AK03-5594', 'AVAILABLE'),
-('20000016-0000-0000-0000-000000000003', 'BMWK-AK03-2271', 'AVAILABLE');
+('20000016-0000-0000-0000-000000000003', 'BMWK-AK03-2271', 'AVAILABLE'),
+
+-- Game 17 offers (Grand Theft Auto VI - 12 keys total so stock ranks #1)
+('20000017-0000-0000-0000-000000000001', 'GTA6-RV01-1001', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000001', 'GTA6-RV01-1002', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000001', 'GTA6-RV01-1003', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000001', 'GTA6-RV01-1004', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000002', 'GTA6-KE02-2001', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000002', 'GTA6-KE02-2002', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000002', 'GTA6-KE02-2003', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000002', 'GTA6-KE02-2004', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000003', 'GTA6-NK03-3001', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000003', 'GTA6-NK03-3002', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000003', 'GTA6-NK03-3003', 'AVAILABLE'),
+('20000017-0000-0000-0000-000000000003', 'GTA6-NK03-3004', 'AVAILABLE');
 
 -- 5. SEED 4 DYNAMIC HOMEPAGE BLOCKS
 INSERT INTO homepage_blocks (id, block_type, title, sort_order, config, is_active) VALUES
@@ -430,6 +461,14 @@ INSERT INTO homepage_blocks (id, block_type, title, sort_order, config, is_activ
         'autoplay_interval_ms', 5000,
         'tagline', 'Get instant digital key delivery on thousands of top games',
         'items', jsonb_build_array(
+            jsonb_build_object(
+                'product_id', '11111111-0000-0000-0000-000000000017',
+                'headline', 'Grand Theft Auto VI',
+                'subheading', 'Return to Vice City & Leonida — Secure Your PSN Global Key',
+                'badge', 'MOST ANTICIPATED',
+                'banner_image', 'https://upload.wikimedia.org/wikipedia/en/4/46/Grand_Theft_Auto_VI.png',
+                'cta_text', 'Pre-Order Key from €69.99'
+            ),
             jsonb_build_object(
                 'product_id', '11111111-0000-0000-0000-000000000016',
                 'headline', 'Black Myth: Wukong',
@@ -467,14 +506,14 @@ INSERT INTO homepage_blocks (id, block_type, title, sort_order, config, is_activ
         'layout', 'grid',
         'limit', 8,
         'product_ids', jsonb_build_array(
+            '11111111-0000-0000-0000-000000000017', -- Grand Theft Auto VI
             '11111111-0000-0000-0000-000000000008', -- Baldur''s Gate 3
             '11111111-0000-0000-0000-000000000002', -- Elden Ring
             '11111111-0000-0000-0000-000000000016', -- Black Myth: Wukong
             '11111111-0000-0000-0000-000000000004', -- EA SPORTS FC 25
             '11111111-0000-0000-0000-000000000006', -- Helldivers 2
             '11111111-0000-0000-0000-000000000005', -- GTA V
-            '11111111-0000-0000-0000-000000000001', -- Cyberpunk 2077
-            '11111111-0000-0000-0000-000000000009'  -- God of War Ragnarök
+            '11111111-0000-0000-0000-000000000001'  -- Cyberpunk 2077
         )
     ),
     true

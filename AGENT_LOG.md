@@ -1215,3 +1215,44 @@ Fix the table alias reference in the `min_price` / `max_price` WHERE condition i
 ### 3. Verification Results
 - `Select-String` across `backend/internal/**/*.go` confirmed zero `os.lowest_price_cents` references remain in filter clauses (only the `COALESCE(os.lowest_price_cents, 0) AS lowest_price_cents` CTE projections).
 - `go test -v -count=1 ./...` (`Eneba Project/backend`): **15/15 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.718s`).
+
+
+---
+
+## Turn 24: Feature Grand Theft Auto VI in Database Seed & Idempotent Startup Migration
+
+### 1. User Prompt
+```text
+Let's feature **Grand Theft Auto VI** right at the forefront of the marketplace (Hero Banner spotlight + top of Store catalog + full multi-seller offers and digital keys). Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Implement this cleanly in the database seed and startup migration so both fresh Neon deployments and my existing local Postgres database pick it up immediately:
+
+1. DATABASE SEED & IDEMPOTENT MIGRATION (`backend/migrations/002_seed.sql` & startup migration):
+   - Add **Grand Theft Auto VI** (`slug: "grand-theft-auto-vi"`, Platform: `PSN` or `Xbox` / `Steam` with authentic cover art URL, Region: `GLOBAL`, release/popularity rank at the very top of "Most Popular", authentic description, tags `["Action", "Open World", "Blockbuster"]`).
+   - Add 2–3 competing seller offers for **Grand Theft Auto VI** (e.g., `RockstarVault`, `KeyEmpire`, `NordicKeys` with varying prices like `€69.99`, `€72.50`, `€74.99` against a `€89.99` MSRP) and at least 10 available `digital_keys` rows so reviewers can test adding it to cart and completing checkout.
+   - Update the primary `hero_banner` block in `homepage_blocks` (and the `featured_grid` block) so **Grand Theft Auto VI** is the #1 hero spotlight CTA (`/product/grand-theft-auto-vi`) and appears first in the featured grid—all still driven dynamically from PostgreSQL JSONB with zero hardcoded frontend lists.
+   - Ensure the startup SQL migration runs idempotently (`ON CONFLICT DO NOTHING` / `UPDATE`) so restarting `go run ./cmd/api` immediately adds GTA VI to my existing local Postgres database without requiring a full database wipe.
+
+2. VERIFICATION:
+   - Run `go test -v ./...` and `npm run build` to verify all backend and frontend tests pass cleanly.
+```
+
+### 2. Summary of Changes
+1. **`backend/migrations/002_seed.sql`**:
+   - Added **Grand Theft Auto VI** (`id: '11111111-0000-0000-0000-000000000017'`, `slug: 'grand-theft-auto-vi'`, `platform: 'PSN'`, `region: 'GLOBAL'`, `genre: 'Action / Open World / Blockbuster'`, `release_date: '2025-11-19'`, cover art `https://upload.wikimedia.org/wikipedia/en/4/46/Grand_Theft_Auto_VI.png`, authentic Leonida/Vice City description with Action/Open World/Blockbuster tags).
+   - Seeded 3 competing seller offers against an `8999` cents (`€89.99`) MSRP:
+     - `RockstarVault` (`20000017-0000-0000-0000-000000000001`): `6999` cents (`€69.99`, featured, 4.99 rating, 6,420 reviews)
+     - `KeyEmpire` (`20000017-0000-0000-0000-000000000002`): `7250` cents (`€72.50`, 4.95 rating, 2,890 reviews)
+     - `NordicKeys` (`20000017-0000-0000-0000-000000000003`): `7499` cents (`€74.99`, 4.91 rating, 1,540 reviews)
+   - Seeded 12 `AVAILABLE` `digital_keys` rows (`GTA6-RV01-1001..1004`, `GTA6-KE02-2001..2004`, `GTA6-NK03-3001..3004`, 4 keys per offer) so `total_stock_count = 12` places GTA VI #1 in both `sort=popular` (`total_stock_count DESC`) and `sort=newest` (`release_date DESC`).
+   - Updated `homepage_blocks` `hero_banner` (`30000000-0000-0000-0000-000000000001`) so Grand Theft Auto VI is slide #1 (`Pre-Order Key from €69.99`, `/product/grand-theft-auto-vi`) and `best_sellers` (`30000000-0000-0000-0000-000000000002`) so GTA VI appears #1 in the 8-item featured grid.
+2. **`backend/internal/repository/catalog.go` & `backend/internal/services/catalog.go`**:
+   - Added `CatalogRepository.EnsureFeaturedGTAVI(ctx)` invoked during startup via `CatalogService.EnsureCatalogArtwork(ctx)`.
+   - Idempotently upserts the GTA VI product (`ON CONFLICT (id) DO UPDATE`), its 3 seller offers (`ON CONFLICT (id) DO UPDATE`), 12 digital keys (`ON CONFLICT (license_key) DO NOTHING`), and promotes GTA VI to index `0` in `hero_banner` (`ensureHeroSlideFirst`) and `best_sellers` (`ensureBlockProductFirst`) on existing databases without wiping data.
+3. **`backend/internal/handlers/catalog_test.go`**:
+   - Added `TestGrandTheftAutoVI_SpotlightAndCatalog` verifying `/api/homepage` puts `grand-theft-auto-vi` #1 in both `hero_banner` and `best_sellers`, `/api/products?sort=popular` returns `grand-theft-auto-vi` at index `0`, and `/api/products/grand-theft-auto-vi` returns 3 competing offers with 12 available digital keys.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **16/16 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.406s`).
+- `npm test` (`Eneba Project/frontend`): **14/14 tests passed**.
+- `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `8.16s`).

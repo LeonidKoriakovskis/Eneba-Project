@@ -388,6 +388,202 @@ func (r *CatalogRepository) GetProductBySlug(ctx context.Context, slug string) (
 }
 
 
+// EnsureFeaturedGTAVI idempotently upserts Grand Theft Auto VI, its competing seller offers,
+// available digital keys, and homepage spotlight placement so existing DBs receive it on startup.
+func (r *CatalogRepository) EnsureFeaturedGTAVI(ctx context.Context) error {
+	const gtaProductID = "11111111-0000-0000-0000-000000000017"
+	const gtaCoverURL = "https://upload.wikimedia.org/wikipedia/en/4/46/Grand_Theft_Auto_VI.png"
+
+	if _, err := r.pool.Exec(ctx, `
+		INSERT INTO products (id, title, slug, description, cover_image_url, platform, region, genre, release_date)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		ON CONFLICT (id) DO UPDATE SET
+			title = EXCLUDED.title,
+			slug = EXCLUDED.slug,
+			description = EXCLUDED.description,
+			cover_image_url = EXCLUDED.cover_image_url,
+			platform = EXCLUDED.platform,
+			region = EXCLUDED.region,
+			genre = EXCLUDED.genre,
+			release_date = EXCLUDED.release_date,
+			updated_at = NOW()
+	`,
+		gtaProductID,
+		"Grand Theft Auto VI",
+		"grand-theft-auto-vi",
+		"Head to the state of Leonida, home to the neon-soaked streets of Vice City and beyond, in the biggest, most immersive evolution of the Grand Theft Auto series yet. Tags: Action, Open World, Blockbuster.",
+		gtaCoverURL,
+		"PSN",
+		"GLOBAL",
+		"Action / Open World / Blockbuster",
+		"2025-11-19",
+	); err != nil {
+		return fmt.Errorf("failed to upsert Grand Theft Auto VI product: %w", err)
+	}
+
+	type offerSeed struct {
+		id            string
+		sellerName    string
+		rating        float64
+		reviews       int
+		priceCents    int
+		originalCents int
+		featured      bool
+	}
+	offers := []offerSeed{
+		{"20000017-0000-0000-0000-000000000001", "RockstarVault", 4.99, 6420, 6999, 8999, true},
+		{"20000017-0000-0000-0000-000000000002", "KeyEmpire", 4.95, 2890, 7250, 8999, false},
+		{"20000017-0000-0000-0000-000000000003", "NordicKeys", 4.91, 1540, 7499, 8999, false},
+	}
+	for _, o := range offers {
+		if _, err := r.pool.Exec(ctx, `
+			INSERT INTO seller_offers (id, product_id, seller_name, seller_rating, review_count, price_cents, original_price_cents, is_featured)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			ON CONFLICT (id) DO UPDATE SET
+				seller_name = EXCLUDED.seller_name,
+				seller_rating = EXCLUDED.seller_rating,
+				review_count = EXCLUDED.review_count,
+				price_cents = EXCLUDED.price_cents,
+				original_price_cents = EXCLUDED.original_price_cents,
+				is_featured = EXCLUDED.is_featured,
+				updated_at = NOW()
+		`, o.id, gtaProductID, o.sellerName, o.rating, o.reviews, o.priceCents, o.originalCents, o.featured); err != nil {
+			return fmt.Errorf("failed to upsert GTA VI seller offer %s: %w", o.sellerName, err)
+		}
+	}
+
+	keySeeds := []struct {
+		offerID string
+		key     string
+	}{
+		{"20000017-0000-0000-0000-000000000001", "GTA6-RV01-1001"},
+		{"20000017-0000-0000-0000-000000000001", "GTA6-RV01-1002"},
+		{"20000017-0000-0000-0000-000000000001", "GTA6-RV01-1003"},
+		{"20000017-0000-0000-0000-000000000001", "GTA6-RV01-1004"},
+		{"20000017-0000-0000-0000-000000000002", "GTA6-KE02-2001"},
+		{"20000017-0000-0000-0000-000000000002", "GTA6-KE02-2002"},
+		{"20000017-0000-0000-0000-000000000002", "GTA6-KE02-2003"},
+		{"20000017-0000-0000-0000-000000000002", "GTA6-KE02-2004"},
+		{"20000017-0000-0000-0000-000000000003", "GTA6-NK03-3001"},
+		{"20000017-0000-0000-0000-000000000003", "GTA6-NK03-3002"},
+		{"20000017-0000-0000-0000-000000000003", "GTA6-NK03-3003"},
+		{"20000017-0000-0000-0000-000000000003", "GTA6-NK03-3004"},
+	}
+	for _, ks := range keySeeds {
+		if _, err := r.pool.Exec(ctx, `
+			INSERT INTO digital_keys (seller_offer_id, license_key, status)
+			VALUES ($1, $2, 'AVAILABLE')
+			ON CONFLICT (license_key) DO NOTHING
+		`, ks.offerID, ks.key); err != nil {
+			return fmt.Errorf("failed to seed GTA VI key %s: %w", ks.key, err)
+		}
+	}
+
+	// Ensure GTA VI is the #1 slide in hero_banner (30000000-0000-0000-0000-000000000001)
+	if err := r.ensureHeroSlideFirst(ctx, "30000000-0000-0000-0000-000000000001", map[string]interface{}{
+		"product_id":   gtaProductID,
+		"headline":     "Grand Theft Auto VI",
+		"subheading":   "Return to Vice City & Leonida — Secure Your PSN Global Key",
+		"badge":        "MOST ANTICIPATED",
+		"banner_image": gtaCoverURL,
+		"cta_text":     "Pre-Order Key from €69.99",
+	}); err != nil {
+		return err
+	}
+
+	// Ensure GTA VI is the #1 product in best_sellers (30000000-0000-0000-0000-000000000002)
+	if err := r.ensureBlockProductFirst(ctx, "30000000-0000-0000-0000-000000000002", gtaProductID, 8); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *CatalogRepository) ensureHeroSlideFirst(ctx context.Context, blockID string, slide map[string]interface{}) error {
+	var raw []byte
+	err := r.pool.QueryRow(ctx, `SELECT config FROM homepage_blocks WHERE id = $1`, blockID).Scan(&raw)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("failed to load hero_banner for GTA VI migration: %w", err)
+	}
+
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil
+	}
+
+	targetID, _ := slide["product_id"].(string)
+	existingItems, _ := cfg["items"].([]interface{})
+	if len(existingItems) > 0 {
+		if first, ok := existingItems[0].(map[string]interface{}); ok {
+			if firstID, _ := first["product_id"].(string); firstID == targetID {
+				return nil
+			}
+		}
+	}
+
+	reordered := []interface{}{slide}
+	for _, item := range existingItems {
+		if m, ok := item.(map[string]interface{}); ok {
+			if pid, _ := m["product_id"].(string); pid == targetID {
+				continue
+			}
+		}
+		reordered = append(reordered, item)
+	}
+	cfg["items"] = reordered
+
+	updated, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx, `UPDATE homepage_blocks SET config = $1, updated_at = NOW() WHERE id = $2`, updated, blockID)
+	return err
+}
+
+func (r *CatalogRepository) ensureBlockProductFirst(ctx context.Context, blockID string, productID string, maxLen int) error {
+	var raw []byte
+	err := r.pool.QueryRow(ctx, `SELECT config FROM homepage_blocks WHERE id = $1`, blockID).Scan(&raw)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("failed to load block %s for GTA VI migration: %w", blockID, err)
+	}
+
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil
+	}
+
+	rawPids, _ := cfg["product_ids"].([]interface{})
+	if len(rawPids) > 0 {
+		if firstID, _ := rawPids[0].(string); firstID == productID {
+			return nil
+		}
+	}
+
+	reordered := []interface{}{productID}
+	for _, item := range rawPids {
+		if idStr, ok := item.(string); ok && idStr != "" && idStr != productID {
+			reordered = append(reordered, idStr)
+		}
+	}
+	if maxLen > 0 && len(reordered) > maxLen {
+		reordered = reordered[:maxLen]
+	}
+	cfg["product_ids"] = reordered
+
+	updated, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx, `UPDATE homepage_blocks SET config = $1, updated_at = NOW() WHERE id = $2`, updated, blockID)
+	return err
+}
+
 // SyncProductCovers updates cover artwork for seeded products idempotently.
 func (r *CatalogRepository) SyncProductCovers(ctx context.Context, covers map[string]string) error {
 	for id, url := range covers {
