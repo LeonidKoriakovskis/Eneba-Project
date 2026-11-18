@@ -1166,3 +1166,52 @@ Fix the Stripe Checkout Session creation in the Go backend:
 
 ### 3. Verification Results
 - `go test -v -count=1 ./...` (`Eneba Project/backend`): **14/14 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.697s`).
+
+
+---
+
+## Turn 22: Fix `min_price` & `max_price` SQL Query Construction in `GET /api/products`
+
+### 1. User Prompt
+```text
+In the Go backend (`GET /api/products` in `backend/internal/repository` and `handlers`), filtering by `min_price` or `max_price` (e.g., `GET /api/products?max_price=3000&sort=popular&limit=20&offset=0`) is currently returning a `500 Internal Server Error`. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Fix the `min_price` and `max_price` SQL query construction in `GET /api/products`:
+1. Inspect the SQL query builder in `backend/internal/repository` where `min_price` and `max_price` are appended (likely a parameter placeholder index mismatch `$n` after adding `ANY($...)` array parameters for multi-select `platform`/`region`, or an aggregate/column mismatch on `min_price_cents`).
+2. Fix the query so `min_price`, `max_price`, and combined `min_price` + `max_price` filters execute cleanly alongside `platform`, `region`, `q`, and `sort`.
+3. Add an integration test in `backend/internal/handlers/catalog_test.go` specifically testing `?min_price=...&max_price=...` (both alone and combined with `platform`/`region`) so it is permanently covered by `go test -v ./...`.
+
+Verify `go test -v ./...` passes completely.
+```
+
+### 2. Summary of Changes
+1. **`backend/internal/repository/catalog.go` (`ListProducts`)**:
+   - **Root Cause:** `MinPriceCents` and `MaxPriceCents` conditions (`COALESCE(os.lowest_price_cents, 0) >= $%d` and `<= $%d`) were placed in `havingClause` on the outer `SELECT ... FROM filtered_products` query, where table alias `os` (`offer_stats`) is not in scope (`ERROR: missing FROM-clause entry for table "os"`).
+   - **Fix:** Moved `MinPriceCents` and `MaxPriceCents` predicates into `whereConditions` inside the `filtered_products` CTE (where `LEFT JOIN offer_stats os` is joined and in scope) and removed the stale `havingClause` from the outer query.
+2. **`backend/internal/handlers/catalog_test.go`**:
+   - Added `TestProductsEndpoint_PriceRangeFilters` verifying `max_price=3000&sort=popular&limit=20&offset=0`, `min_price=3500&sort=price_asc`, and combined `platform=Steam,PSN&region=GLOBAL,EUROPE&min_price=2000&max_price=4500&sort=price_asc`.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **15/15 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.211s`), including `TestProductsEndpoint_PriceRangeFilters` (`0.12s`).
+
+
+---
+
+## Turn 23: Filter `min_price` / `max_price` Directly on `filtered_products` (`lowest_price_cents`)
+
+### 1. User Prompt
+```text
+In `backend/internal/repository`, `GET /api/products` with `min_price` or `max_price` fails with: `ERROR: missing FROM-clause entry for table "os" (SQLSTATE 42P01)`. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Fix the table alias reference in the `min_price` / `max_price` WHERE condition inside `backend/internal/repository` so it matches the actual CTE/subquery alias in that `SELECT` query (instead of `os.`), and add an integration test in `backend/internal/handlers/catalog_test.go` covering `?min_price=...&max_price=...`. Run `go test -v ./...` to confirm all tests pass.
+```
+
+### 2. Summary of Changes
+1. **`backend/internal/repository/catalog.go` (`ListProducts`)**:
+   - Replaced `os.lowest_price_cents` in `ListProducts` filter predicates with `priceConditions` (`lowest_price_cents >= $%d` and `lowest_price_cents <= $%d`) applied directly to the `FROM filtered_products` query (`priceWhereClause`), eliminating all `os.` alias references from `WHERE` filters.
+2. **`backend/internal/handlers/catalog_test.go`**:
+   - Expanded `TestProductsEndpoint_PriceRangeFilters` to verify `?min_price=2000&max_price=4000&sort=price_desc` standalone as well as combined `?q=cyber&platform=Steam,PSN&region=GLOBAL,EUROPE&min_price=2000&max_price=4500&sort=price_asc`.
+
+### 3. Verification Results
+- `Select-String` across `backend/internal/**/*.go` confirmed zero `os.lowest_price_cents` references remain in filter clauses (only the `COALESCE(os.lowest_price_cents, 0) AS lowest_price_cents` CTE projections).
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **15/15 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.718s`).

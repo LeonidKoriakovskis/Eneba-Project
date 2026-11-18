@@ -157,22 +157,22 @@ func (r *CatalogRepository) ListProducts(ctx context.Context, params models.Prod
 		whereClause = "WHERE " + strings.Join(whereConditions, " AND ")
 	}
 
-	// Filter by price on lowest_price_cents
-	var havingConditions []string
+	// Filter by computed lowest_price_cents directly on the filtered_products CTE
+	var priceConditions []string
 	if params.MinPriceCents != nil {
-		havingConditions = append(havingConditions, fmt.Sprintf("COALESCE(os.lowest_price_cents, 0) >= $%d", argIdx))
+		priceConditions = append(priceConditions, fmt.Sprintf("lowest_price_cents >= $%d", argIdx))
 		args = append(args, *params.MinPriceCents)
 		argIdx++
 	}
 	if params.MaxPriceCents != nil {
-		havingConditions = append(havingConditions, fmt.Sprintf("COALESCE(os.lowest_price_cents, 0) <= $%d", argIdx))
+		priceConditions = append(priceConditions, fmt.Sprintf("lowest_price_cents <= $%d", argIdx))
 		args = append(args, *params.MaxPriceCents)
 		argIdx++
 	}
 
-	havingClause := ""
-	if len(havingConditions) > 0 {
-		havingClause = "WHERE " + strings.Join(havingConditions, " AND ")
+	priceWhereClause := ""
+	if len(priceConditions) > 0 {
+		priceWhereClause = "WHERE " + strings.Join(priceConditions, " AND ")
 	}
 
 	// Determine ordering
@@ -251,7 +251,7 @@ func (r *CatalogRepository) ListProducts(ctx context.Context, params models.Prod
 		%s
 		%s
 		LIMIT $%d OFFSET $%d
-	`, relevanceSelect, whereClause, havingClause, orderBy, argIdx, argIdx+1)
+	`, relevanceSelect, whereClause, priceWhereClause, orderBy, argIdx, argIdx+1)
 
 	args = append(args, limit, offset)
 

@@ -282,6 +282,102 @@ func TestProductsEndpoint_MultiPlatformAndMultiRegionFilter(t *testing.T) {
 	}
 }
 
+func TestProductsEndpoint_PriceRangeFilters(t *testing.T) {
+	router := setupTestRouter(t)
+
+	// 1. max_price only (exact reproduction of ?max_price=3000&sort=popular&limit=20&offset=0)
+	maxReq := httptest.NewRequest(http.MethodGet, "/api/products?max_price=3000&sort=popular&limit=20&offset=0", nil)
+	maxRec := httptest.NewRecorder()
+	router.ServeHTTP(maxRec, maxReq)
+	if maxRec.Code != http.StatusOK {
+		t.Fatalf("max_price filter: expected 200, got %d. Body: %s", maxRec.Code, maxRec.Body.String())
+	}
+	var maxRes models.ProductListResponse
+	if err := json.Unmarshal(maxRec.Body.Bytes(), &maxRes); err != nil {
+		t.Fatalf("decode max_price response: %v", err)
+	}
+	if len(maxRes.Products) == 0 {
+		t.Fatalf("expected matching products for max_price=3000, got 0")
+	}
+	for _, p := range maxRes.Products {
+		if p.LowestPriceCents > 3000 {
+			t.Errorf("product %s exceeds max_price=3000: got %d", p.Title, p.LowestPriceCents)
+		}
+	}
+
+	// 2. min_price only
+	minReq := httptest.NewRequest(http.MethodGet, "/api/products?min_price=3500&sort=price_asc", nil)
+	minRec := httptest.NewRecorder()
+	router.ServeHTTP(minRec, minReq)
+	if minRec.Code != http.StatusOK {
+		t.Fatalf("min_price filter: expected 200, got %d. Body: %s", minRec.Code, minRec.Body.String())
+	}
+	var minRes models.ProductListResponse
+	if err := json.Unmarshal(minRec.Body.Bytes(), &minRes); err != nil {
+		t.Fatalf("decode min_price response: %v", err)
+	}
+	if len(minRes.Products) == 0 {
+		t.Fatalf("expected matching products for min_price=3500, got 0")
+	}
+	for _, p := range minRes.Products {
+		if p.LowestPriceCents < 3500 {
+			t.Errorf("product %s below min_price=3500: got %d", p.Title, p.LowestPriceCents)
+		}
+	}
+
+	// 3. Combined min_price + max_price alone
+	rangeReq := httptest.NewRequest(http.MethodGet, "/api/products?min_price=2000&max_price=4000&sort=price_desc", nil)
+	rangeRec := httptest.NewRecorder()
+	router.ServeHTTP(rangeRec, rangeReq)
+	if rangeRec.Code != http.StatusOK {
+		t.Fatalf("min_price+max_price filter: expected 200, got %d. Body: %s", rangeRec.Code, rangeRec.Body.String())
+	}
+	var rangeRes models.ProductListResponse
+	if err := json.Unmarshal(rangeRec.Body.Bytes(), &rangeRes); err != nil {
+		t.Fatalf("decode range response: %v", err)
+	}
+	if len(rangeRes.Products) == 0 {
+		t.Fatalf("expected matching products for min_price=2000&max_price=4000, got 0")
+	}
+	for i, p := range rangeRes.Products {
+		if p.LowestPriceCents < 2000 || p.LowestPriceCents > 4000 {
+			t.Errorf("product %s outside [2000,4000]: got %d", p.Title, p.LowestPriceCents)
+		}
+		if i > 0 && p.LowestPriceCents > rangeRes.Products[i-1].LowestPriceCents {
+			t.Errorf("results not sorted price_desc: %d > %d", p.LowestPriceCents, rangeRes.Products[i-1].LowestPriceCents)
+		}
+	}
+
+	// 4. Combined q + multi-select platform/region + min_price + max_price + sort
+	comboReq := httptest.NewRequest(http.MethodGet, "/api/products?q=cyber&platform=Steam,PSN&region=GLOBAL,EUROPE&min_price=2000&max_price=4500&sort=price_asc", nil)
+	comboRec := httptest.NewRecorder()
+	router.ServeHTTP(comboRec, comboReq)
+	if comboRec.Code != http.StatusOK {
+		t.Fatalf("combined price+platform+region filter: expected 200, got %d. Body: %s", comboRec.Code, comboRec.Body.String())
+	}
+	var comboRes models.ProductListResponse
+	if err := json.Unmarshal(comboRec.Body.Bytes(), &comboRes); err != nil {
+		t.Fatalf("decode combined response: %v", err)
+	}
+	if len(comboRes.Products) == 0 {
+		t.Fatalf("expected matching products for combined filter, got 0")
+	}
+	for i, p := range comboRes.Products {
+		if p.LowestPriceCents < 2000 || p.LowestPriceCents > 4500 {
+			t.Errorf("product %s outside [2000,4500]: got %d", p.Title, p.LowestPriceCents)
+		}
+		if p.Platform != "Steam" && p.Platform != "PSN" {
+			t.Errorf("unexpected platform %s", p.Platform)
+		}
+		if p.Region != "GLOBAL" && p.Region != "EUROPE" {
+			t.Errorf("unexpected region %s", p.Region)
+		}
+		if i > 0 && p.LowestPriceCents < comboRes.Products[i-1].LowestPriceCents {
+			t.Errorf("results not sorted price_asc: %d < %d", p.LowestPriceCents, comboRes.Products[i-1].LowestPriceCents)
+		}
+	}
+}
+
 func TestProductBySlugEndpoint_DetailAndOffers(t *testing.T) {
 	router := setupTestRouter(t)
 
