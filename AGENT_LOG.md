@@ -1256,3 +1256,42 @@ Implement this cleanly in the database seed and startup migration so both fresh 
 - `go test -v -count=1 ./...` (`Eneba Project/backend`): **16/16 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.406s`).
 - `npm test` (`Eneba Project/frontend`): **14/14 tests passed**.
 - `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `8.16s`).
+
+
+---
+
+## Turn 25: Secure Digital Key Delivery (Email "CLICK TO SEE KEY" CTA + Order Page Masked Key Reveal)
+
+### 1. User Prompt
+```text
+Let's make the digital key delivery match real eneba.com security and UX: instead of showing the raw activation key in plaintext inside the order email, the email should link to the website with a **"CLICK TO SEE KEY"** button that redirects the user to their order page (`/orders/:id`), where they click **"Click to See Key"** to reveal and copy it. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Make these two updates:
+
+1. ORDER EMAIL TEMPLATE (`backend/internal/services/email.go`):
+   - In `SendOrderKeyEmail`, remove the plaintext `license_key` string from the HTML email body so raw keys are never exposed in email inboxes.
+   - Instead, under each purchased item (`Grand Theft Auto VI`, platform, region, seller, price), show a masked placeholder (`••••-••••-••••` • *Key ready in your account*) and change the primary yellow CTA button to **"CLICK TO SEE KEY"** linking directly to `${FRONTEND_URL}/orders/${orderID}`.
+
+2. ORDER PAGE KEY REVEAL (`frontend/src/pages/OrdersPage.tsx` / `OrderDetailPage.tsx` & `CheckoutSuccessPage.tsx`):
+   - On `/orders/:id` (and `/orders`), display each purchased key initially masked (`••••-••••-••••`) with a sharp yellow **"Click to See Key"** button; clicking it reveals the full activation key alongside a one-click **"Copy Key"** button (auto-focusing/highlighting the order when arriving from the email link `/orders/:id`).
+
+Verify `go test -v ./...`, `npm test`, and `npm run build` pass cleanly.
+```
+
+### 2. Summary of Changes
+1. **Order Confirmation Email (`backend/internal/services/email.go`)**:
+   - Updated `BuildOrderKeyEmailHTML` to remove plaintext `it.LicenseKey` from the email HTML body and instead display the masked placeholder `••••-••••-••••` • `Key ready in your account` beneath each item (`ProductTitle`, `Platform`, `Region`, `SellerName`, price).
+   - Updated the primary `#FFDC00` CTA button label to **`CLICK TO SEE KEY`** linking directly to `${FRONTEND_URL}/orders/${order.ID}`.
+   - Updated `SendOrderKeyEmailAsync` so email preview logs also mask activation keys (`••••-••••-••••`).
+2. **Backend Email Test (`backend/internal/handlers/checkout_test.go`)**:
+   - Updated `TestEmailService_HTMLTemplatesAndResendDelivery` to assert `orderHTML` omits raw license keys (`CP77-PV01-9X82`), displays `••••-••••-••••` and `Key ready in your account`, renders **`CLICK TO SEE KEY`**, and links to `/orders/12345678-0000-0000-0000-000000000001`.
+3. **Order Page Masked Key Reveal (`frontend/src/components/orders/OrderKeyCard.tsx` & `frontend/src/pages/OrderDetailPage.tsx`)**:
+   - Updated `OrderKeyCard` so masked keys (`••••-••••-••••` • `Key ready in your account`) display a sharp square yellow **`Click to See Key`** button; clicking it reveals the plaintext license key alongside a **`Hide Key`** toggle and one-click sharp yellow **`Copy Key`** (`Copied!`) button.
+   - Updated `OrderDetailPage` (shared by `/orders/:id` and `/checkout/success`) so all purchased keys start masked by default (`revealAll = false`) and added `keysSectionRef` (`tabIndex={-1}`) with `#FFDC00` highlight ring that auto-focuses when arriving at `/orders/:id` from the email CTA link.
+4. **Frontend Tests (`frontend/tests/purchaseFlow.test.mjs`)**:
+   - Updated `OrderKeyCard` and `OrderDetailPage` assertions to verify both `/orders/:id` and `/checkout/success` mask keys initially (`••••-••••-••••`), render **`Click to See Key`**, and reveal both the key and **`Copy Key`** once clicked.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **16/16 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.351s`).
+- `npm test` (`Eneba Project/frontend`): **14/14 tests passed**.
+- `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `6.80s`).

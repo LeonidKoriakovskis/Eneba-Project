@@ -131,52 +131,61 @@ export function OrderKeyCard({ item, defaultRevealed = false, defaultRedeemOpen 
             <span className="block text-[10px] font-extrabold uppercase tracking-widest text-[#00D1B2]">
               Activation Key
             </span>
-            <code
-              data-testid={`license-key-${item.id}`}
-              className={`mt-0.5 block select-all font-mono text-base font-black tracking-widest sm:text-lg ${
-                revealed ? 'text-white' : 'select-none text-eneba-muted blur-[3px]'
-              }`}
-            >
-              {revealed ? item.license_key : maskedKey}
-            </code>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2.5">
+              <code
+                data-testid={`license-key-${item.id}`}
+                className={`font-mono text-base font-black tracking-widest sm:text-lg ${
+                  revealed ? 'select-all text-white' : 'select-none text-eneba-muted'
+                }`}
+              >
+                {revealed ? item.license_key : maskedKey}
+              </code>
+              {!revealed && (
+                <span className="text-xs italic text-[#00D1B2]">• Key ready in your account</span>
+              )}
+            </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setRevealed((r) => !r)}
-              className="inline-flex items-center gap-1.5 rounded-none bg-eneba-brand px-3.5 py-2 text-xs font-extrabold text-white ring-1 ring-white/15 transition hover:bg-eneba-cardHover"
-            >
-              {revealed ? (
-                <>
+            {!revealed ? (
+              <button
+                type="button"
+                onClick={() => setRevealed(true)}
+                className="inline-flex items-center gap-1.5 rounded-none bg-eneba-yellow px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-eneba-ink transition hover:bg-eneba-yellowHover"
+              >
+                <Eye className="h-4 w-4" aria-hidden /> Click to See Key
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setRevealed(false)}
+                  className="inline-flex items-center gap-1.5 rounded-none bg-eneba-brand px-3.5 py-2 text-xs font-extrabold text-white ring-1 ring-white/15 transition hover:bg-eneba-cardHover"
+                >
                   <EyeOff className="h-4 w-4" aria-hidden /> Hide Key
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 text-eneba-yellow" aria-hidden /> Reveal Key
-                </>
-              )}
-            </button>
+                </button>
 
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={`inline-flex items-center gap-1.5 rounded-none px-4 py-2 text-xs font-extrabold transition ${
-                copied
-                  ? 'bg-[#00D1B2] text-eneba-ink'
-                  : 'bg-eneba-yellow text-eneba-ink hover:bg-eneba-yellowHover'
-              }`}
-            >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4" aria-hidden /> Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" aria-hidden /> Copy Key
-                </>
-              )}
-            </button>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`inline-flex items-center gap-1.5 rounded-none px-4 py-2 text-xs font-extrabold transition ${
+                    copied
+                      ? 'bg-[#00D1B2] text-eneba-ink'
+                      : 'bg-eneba-yellow text-eneba-ink hover:bg-eneba-yellowHover'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4" aria-hidden /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" aria-hidden /> Copy Key
+                    </>
+                  )}
+                </button>
+              </>
+            )}
 
             <button
               type="button"

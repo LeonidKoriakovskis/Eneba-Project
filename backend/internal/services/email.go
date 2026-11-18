@@ -130,8 +130,9 @@ func BuildOrderKeyEmailHTML(fullName string, order *models.OrderDetail, frontend
             <td style="padding:14px 16px;border-bottom:1px solid #3F1C8A;background-color:#1F0A4D;">
               <div style="font-size:15px;font-weight:800;color:#FFFFFF;">%s</div>
               <div style="margin-top:4px;font-size:12px;color:#A996DC;">%s &bull; %s &bull; Seller: %s &bull; %s</div>
-              <div style="margin-top:10px;padding:10px 12px;background-color:#12052E;border:1px solid #00D1B2;font-family:monospace;font-size:16px;font-weight:900;letter-spacing:2px;color:#00D1B2;">
-                %s
+              <div style="margin-top:10px;padding:10px 12px;background-color:#12052E;border:1px solid #00D1B2;font-size:13px;color:#00D1B2;">
+                <span style="font-family:monospace;font-size:16px;font-weight:900;letter-spacing:2px;color:#FFFFFF;">••••-••••-••••</span>
+                <span style="margin-left:8px;font-style:italic;color:#00D1B2;">&bull; Key ready in your account</span>
               </div>
             </td>
           </tr>`,
@@ -140,7 +141,6 @@ func BuildOrderKeyEmailHTML(fullName string, order *models.OrderDetail, frontend
 			html.EscapeString(it.Region),
 			html.EscapeString(it.SellerName),
 			html.EscapeString(formatCentsEUR(it.UnitPriceCents)),
-			html.EscapeString(it.LicenseKey),
 		))
 	}
 
@@ -165,7 +165,7 @@ func BuildOrderKeyEmailHTML(fullName string, order *models.OrderDetail, frontend
               </div>
               <h1 style="margin:14px 0 8px;font-size:22px;color:#FFFFFF;">Thanks for your order, %s!</h1>
               <p style="margin:0 0 20px;font-size:14px;line-height:1.5;color:#D8CCF5;">
-                Total Paid: <strong style="color:#FFDC00;font-size:16px;">%s</strong>. Your digital activation keys are ready below:
+                Total Paid: <strong style="color:#FFDC00;font-size:16px;">%s</strong>. For your security, activation keys are masked in email — click below to reveal and copy your keys in your account:
               </p>
 
               <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="border:1px solid #5B2FC4;">
@@ -176,7 +176,7 @@ func BuildOrderKeyEmailHTML(fullName string, order *models.OrderDetail, frontend
                 <tr>
                   <td style="background-color:#FFDC00;">
                     <a href="%s" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:900;color:#1F0A4D;text-decoration:none;text-transform:uppercase;letter-spacing:0.5px;">
-                      View &amp; Copy Your Digital Keys
+                      CLICK TO SEE KEY
                     </a>
                   </td>
                 </tr>
@@ -225,11 +225,11 @@ func (s *EmailService) SendOrderKeyEmailAsync(toEmail, fullName string, order *m
 	subject := fmt.Sprintf("Your Digital Game Keys (Order #%s)", shortID)
 	orderURL := fmt.Sprintf("%s/orders/%s", s.frontendURL, order.ID)
 
-	var keys []string
+	var itemsSummary []string
 	for _, it := range order.Items {
-		keys = append(keys, fmt.Sprintf("%s (%s): %s", it.ProductTitle, it.Platform, it.LicenseKey))
+		itemsSummary = append(itemsSummary, fmt.Sprintf("%s (%s): ••••-••••-••••", it.ProductTitle, it.Platform))
 	}
-	preview := fmt.Sprintf("Total=%s | Keys=[%s]", formatCentsEUR(order.TotalCents), strings.Join(keys, "; "))
+	preview := fmt.Sprintf("Total=%s | CTA=CLICK TO SEE KEY | Items=[%s]", formatCentsEUR(order.TotalCents), strings.Join(itemsSummary, "; "))
 	htmlBody := BuildOrderKeyEmailHTML(fullName, order, s.frontendURL)
 
 	s.dispatchAsync(toEmail, subject, orderURL, preview, htmlBody)

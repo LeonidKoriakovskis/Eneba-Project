@@ -189,14 +189,16 @@ test('OrderKeyCard masks key by default, reveals exact key when toggled, and sho
   );
   assert.doesNotMatch(maskedHtml, /CP77-PV01-9X82/);
   assert.match(maskedHtml, /••••-••••-••••/);
-  assert.match(maskedHtml, /Reveal Key/);
-  assert.match(maskedHtml, /Copy Key/);
+  assert.match(maskedHtml, /Key ready in your account/);
+  assert.match(maskedHtml, /Click to See Key/);
+  assert.doesNotMatch(maskedHtml, /Copy Key/);
 
   const revealedHtml = renderWithProviders(
     React.createElement(OrderKeyCard, { item: sampleOrderItem, defaultRevealed: true }),
   );
   assert.match(revealedHtml, /CP77-PV01-9X82/);
   assert.match(revealedHtml, /Hide Key/);
+  assert.match(revealedHtml, /Copy Key/);
   assert.match(revealedHtml, /Activate a Product on Steam/);
 });
 
@@ -231,6 +233,9 @@ test('OrderDetailPage renders confirmation screen from cached order receipt', ()
   );
   assert.match(detailHtml, /Payment Successful — Your Digital Keys Are Ready!/);
   assert.match(detailHtml, /#99999999/);
+  assert.match(detailHtml, /••••-••••-••••/);
+  assert.match(detailHtml, /Click to See Key/);
+  assert.doesNotMatch(detailHtml, /CP77-PV01-9X82/);
   assert.match(detailHtml, /Reveal All Keys/);
 
   // Stripe Checkout return route (/checkout/success?session_id=...) renders fulfilled keys cleanly
@@ -254,7 +259,9 @@ test('OrderDetailPage renders confirmation screen from cached order receipt', ()
     ['/checkout/success?session_id=cs_test_123'],
   );
   assert.match(stripeSuccessHtml, /Payment Successful — Your Digital Keys Are Ready!/);
-  assert.match(stripeSuccessHtml, /CP77-PV01-9X82/);
+  assert.match(stripeSuccessHtml, /••••-••••-••••/);
+  assert.match(stripeSuccessHtml, /Click to See Key/);
+  assert.doesNotMatch(stripeSuccessHtml, /CP77-PV01-9X82/);
 
   localStorage.clear();
   sessionStorage.clear();

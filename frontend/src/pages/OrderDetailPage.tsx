@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Package, Sparkles } from 'lucide-react';
 import { api, errorMessage } from '../api/client';
@@ -76,7 +76,14 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(!initialOrder);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [revealAll, setRevealAll] = useState(Boolean(stripeSessionId));
+  const [revealAll, setRevealAll] = useState(false);
+  const keysSectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!loading && order && id) {
+      keysSectionRef.current?.focus({ preventScroll: true });
+    }
+  }, [loading, order, id]);
 
   useDocumentTitle(order ? `Order #${order.id.slice(0, 8)}` : 'Order Confirmation');
 
@@ -132,7 +139,6 @@ export default function OrderDetailPage() {
           clearCart();
           if (!active) return;
           setOrder(fulfilled);
-          setRevealAll(true);
           setLoading(false);
         })
         .catch((err) => {
@@ -241,7 +247,12 @@ export default function OrderDetailPage() {
       </section>
 
       {/* Keys Section */}
-      <section aria-labelledby="keys-heading" className="space-y-4">
+      <section
+        ref={keysSectionRef}
+        tabIndex={-1}
+        aria-labelledby="keys-heading"
+        className="space-y-4 rounded-none bg-eneba-card/40 p-5 ring-1 ring-[#FFDC00]/40 focus:outline-none focus:ring-2 focus:ring-[#FFDC00]"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-[#00D1B2]" aria-hidden />

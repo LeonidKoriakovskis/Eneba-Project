@@ -604,12 +604,17 @@ func TestEmailService_HTMLTemplatesAndResendDelivery(t *testing.T) {
 		"#FFDC00",
 		"Order #12345678",
 		"€28.99",
-		"CP77-PV01-9X82",
+		"••••-••••-••••",
+		"Key ready in your account",
+		"CLICK TO SEE KEY",
 		"https://eneba-demo.vercel.app/orders/12345678-0000-0000-0000-000000000001",
 	} {
 		if !strings.Contains(orderHTML, want) {
 			t.Errorf("order email HTML missing %q", want)
 		}
+	}
+	if strings.Contains(orderHTML, "CP77-PV01-9X82") {
+		t.Errorf("order email HTML must not expose raw license key in plaintext")
 	}
 
 	delivered := make(chan map[string]interface{}, 2)
