@@ -46,6 +46,8 @@ func setupFullEnv(t *testing.T) *testEnv {
 func setupEnvWithStripeKey(t *testing.T, stripeKey string) *testEnv {
 	t.Helper()
 	_ = godotenv.Load("../../.env")
+	_ = godotenv.Load("../../.env.local")
+	_ = godotenv.Load("../../../.env")
 	_ = godotenv.Load("../.env")
 
 	dbURL := os.Getenv("DATABASE_URL")
@@ -53,7 +55,7 @@ func setupEnvWithStripeKey(t *testing.T, stripeKey string) *testEnv {
 		dbURL = "postgres://postgres:password123@localhost:5432/eneba_marketplace?sslmode=disable"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	database, err := db.Connect(ctx, dbURL)
 	if err != nil {

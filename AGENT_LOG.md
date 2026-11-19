@@ -1295,3 +1295,36 @@ Verify `go test -v ./...`, `npm test`, and `npm run build` pass cleanly.
 - `go test -v -count=1 ./...` (`Eneba Project/backend`): **16/16 tests passed** (`ok eneba-marketplace/backend/internal/handlers 3.351s`).
 - `npm test` (`Eneba Project/frontend`): **14/14 tests passed**.
 - `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `6.80s`).
+
+
+---
+
+## Turn 26: Neon CLI Install & Project Initialization (Paused for `neon login`)
+
+### 1. User Prompt
+```text
+Set up this app on Neon using my Neon project (`org-raspy-hat-03124955`, project `polished-mountain-96774173`, branch `production`). Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+1. Install the Neon CLI (`npm i -g neon@latest`, or use `npx neon@latest` if global install fails). If a neon command opens a browser sign-in or requires authentication, pause and tell me to complete `neon login` in my terminal, then retry.
+2. In the project root, run:
+   `neon init -y --org-id org-raspy-hat-03124955 --project-id polished-mountain-96774173 --branch production --services postgres`
+3. Run `neon deploy` to provision the Postgres service in `neon.ts` and pull `DATABASE_URL` into `.env.local` / `.env`.
+4. Wire Neon into our Go backend (`backend/`):
+   - Sync the pulled Neon `DATABASE_URL` into `backend/.env` (keeping our existing `JWT_SECRET`, `STRIPE_SECRET_KEY`, `RESEND_API_KEY`, and `FRONTEND_URL`).
+   - Consult the installed Neon agent skills for Go (`pgx/v5`) best practices (ensuring SSL/pooled connection settings work smoothly with Neon).
+   - Apply our schema and seed SQL files (`backend/migrations/001_init.sql` and `backend/migrations/002_seed.sql`) to the live Neon `production` database (via `neon psql` or Go/psql) so all tables, `pg_trgm` extension, GTA VI & catalog products, offers, and digital keys exist in Neon.
+5. Prove it works:
+   - Run `go test -v ./...` in `backend/` and `npm run build` in `frontend/`.
+   - Start the Go backend connected to Neon and verify live endpoints (`GET /api/homepage`, `GET /api/products?q=cyberpank`, `GET /api/products?max_price=3000`) return real data from Neon Postgres.
+6. Report what changed, the command output proving step 5, and anything that needed manual sign-in.
+```
+
+### 2. Summary of Progress So Far
+1. **Installed Neon CLI**: `npm i -g neon@latest` installed `neon@9.6.3` globally.
+2. **Ran `neon init` in `Eneba Project/`**:
+   - Linked [`.neon`](.neon) to organization `org-raspy-hat-03124955`, project `polished-mountain-96774173`, and branch `production`.
+   - Generated [`neon.ts`](neon.ts), updated [`.gitignore`](.gitignore) (ignoring `.neon`), added root `package.json` / `package-lock.json` (`@neon/config`), and installed Neon agent skills (`neon`, `neon-postgres`, etc.) and MCP configuration.
+3. **Authentication Check**:
+   - `neon init` reported: `Written offline (--no-checks): nothing was verified. ... Sign in to use it: neon login`.
+   - `neon profile list -o json` confirmed `DEFAULT` profile has `account: "-"`, `file: "missing"` (`C:\Users\leoni\.config\neon\credentials.json` absent), and `NEON_API_KEY` is not set.
+   - Paused before `neon deploy` so the user can complete `neon login` in their terminal.

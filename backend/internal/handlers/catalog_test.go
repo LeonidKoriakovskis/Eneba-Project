@@ -22,6 +22,8 @@ import (
 func setupTestRouter(t *testing.T) *chi.Mux {
 	// Try loading .env from various parent directories
 	_ = godotenv.Load("../../.env")
+	_ = godotenv.Load("../../.env.local")
+	_ = godotenv.Load("../../../.env")
 	_ = godotenv.Load("../.env")
 	_ = godotenv.Load(".env")
 
@@ -30,7 +32,7 @@ func setupTestRouter(t *testing.T) *chi.Mux {
 		dbURL = "postgres://postgres:password123@localhost:5432/eneba_marketplace?sslmode=disable"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	database, err := db.Connect(ctx, dbURL)

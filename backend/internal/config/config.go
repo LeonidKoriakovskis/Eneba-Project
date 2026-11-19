@@ -22,9 +22,11 @@ type Config struct {
 }
 
 func Load() *Config {
-	// Try loading from .env if present (in root or backend)
-	_ = godotenv.Load("../.env")
+	// Try loading from .env / .env.local (in backend dir or repo root)
 	_ = godotenv.Load(".env")
+	_ = godotenv.Load(".env.local")
+	_ = godotenv.Load("../.env")
+	_ = godotenv.Load("../.env.local")
 
 	originsStr := os.Getenv("ALLOWED_ORIGINS")
 	if originsStr == "" {

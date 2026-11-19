@@ -23,7 +23,7 @@ func main() {
 	cfg := config.Load()
 	log.Printf("Starting Eneba Marketplace Backend [Env: %s, Port: %s]...", cfg.Environment, cfg.Port)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	database, err := db.Connect(ctx, cfg.DatabaseURL)
