@@ -1328,3 +1328,37 @@ Set up this app on Neon using my Neon project (`org-raspy-hat-03124955`, project
    - `neon init` reported: `Written offline (--no-checks): nothing was verified. ... Sign in to use it: neon login`.
    - `neon profile list -o json` confirmed `DEFAULT` profile has `account: "-"`, `file: "missing"` (`C:\Users\leoni\.config\neon\credentials.json` absent), and `NEON_API_KEY` is not set.
    - Paused before `neon deploy` so the user can complete `neon login` in their terminal.
+
+
+---
+
+## Turn 27: Complete Neon Deployment, Go `pgx/v5` Pooling Configuration, Migrations & Live Verification
+
+### 1. User Prompt
+```text
+I've completed `neon login` in my terminal. Please proceed with steps 3–6: run `neon deploy`, wire the Neon `DATABASE_URL` into `backend/.env` and `pgx/v5`, apply `001_init.sql` and `002_seed.sql`, and verify the tests, build, and live endpoints.
+```
+
+### 2. Summary of Changes
+1. **`neon deploy` & Environment Sync (`Eneba Project/.env` & `backend/.env`)**:
+   - Verified OAuth authentication (`neon profile list -o json` showed `auth: "oauth"`, `file: "ok"` after the user ran `neon login`).
+   - Ran `neon deploy -y` on branch `production` (`br-wandering-sky-bensvt7z`, project `polished-mountain-96774173`, org `org-raspy-hat-03124955`), pulling `DATABASE_URL` (pooled `-pooler` endpoint), `DATABASE_URL_UNPOOLED` (direct endpoint), `NEON_BRANCH`, `NEON_BRANCH_ID`, and `NEON_FUNCTION_HOST_SUFFIX` into root `.env`.
+   - Created gitignored `backend/.env` synced with the Neon pooled `DATABASE_URL` and `DATABASE_URL_UNPOOLED` while preserving `PORT`, `ENV`, `CORS_ALLOWED_ORIGINS`, `JWT_SECRET`, `JWT_EXPIRATION_HOURS`, `FRONTEND_URL`, `STRIPE_SECRET_KEY`, `RESEND_API_KEY`, and `EMAIL_FROM`.
+2. **Go `pgx/v5` + Neon Best Practices (`backend/internal/db/db.go`, `backend/internal/config/config.go`, `backend/cmd/api/main.go`, `backend/internal/handlers/*_test.go`)**:
+   - Updated `db.Connect` in `backend/internal/db/db.go`:
+     - Tuned pool bounds for serverless Neon (`MinConns = 0` so Neon scales to zero when idle, `MaxConns = 15`, `MaxConnLifetime = 30m`, `MaxConnIdleTime = 5m`, `HealthCheckPeriod = 1m`) and increased ping timeout to `15s`.
+     - Enabled `pgx.QueryExecModeSimpleProtocol` for `-pooler.` / `.neon.tech` endpoints so PgBouncer transaction pooling does not hit prepared statement cache collisions.
+   - Updated `config.Load()` and test helpers (`catalog_test.go`, `checkout_test.go`, `main.go`) to load `.env` / `.env.local` consistently across backend and repo-root working directories and allow a `20s` startup context for Neon compute wakeups.
+3. **Direct Migration & Schema Seeding (`backend/cmd/migrate/main.go`)**:
+   - Added `backend/cmd/migrate/main.go` which connects via the direct/unpooled URL (`DATABASE_URL_UNPOOLED`, per the `neon-postgres` skill) and applies `migrations/001_init.sql` and `migrations/002_seed.sql`.
+   - Executed `go -C "Eneba Project\backend" run ./cmd/migrate` against live Neon `production`: seeded `products=17`, `offers=40`, `available_keys=123`, `active_blocks=4`, `spotlight="Grand Theft Auto VI"`.
+
+### 3. Verification Results
+- **`go test -v -count=1 ./...` (`Eneba Project/backend`) against live Neon Postgres**: **16/16 tests passed** (`ok eneba-marketplace/backend/internal/handlers 73.513s`).
+- **`npm test` & `npm run build` (`Eneba Project/frontend`)**: **14/14 unit/SSR tests passed**; `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `6.85s`).
+- **Live Go Backend Endpoint Probes (`Eneba Project/backend/bin/api.exe` connected to Neon `production`)**:
+  - `GET /api/health` → `status=ok database=connected` (`200 OK`, `119.6ms`)
+  - `GET /api/homepage` → `blocks=4 hero_top=grand-theft-auto-vi best_top=grand-theft-auto-vi best_count=8` (`200 OK`, `243.0ms`)
+  - `GET /api/products?q=cyberpank` → `total=1 top_slug=cyberpunk-2077-phantom-liberty-bundle price_cents=2899` (`200 OK`, `119.4ms`)
+  - `GET /api/products?max_price=3000` → `total=8 max_price_seen=2999` (`200 OK`, `120.9ms`)
+  - `GET /api/products/grand-theft-auto-vi` → `title=Grand Theft Auto VI offers=3 lowest_price_cents=6999` (`200 OK`, `242.0ms`)
