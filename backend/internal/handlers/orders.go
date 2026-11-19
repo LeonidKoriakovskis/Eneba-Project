@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -42,15 +43,17 @@ func writeCheckoutError(w http.ResponseWriter, err error, logPrefix string) {
 			"available":       oosErr.Available,
 		})
 	case errors.Is(err, services.ErrStripeDisabled):
+		log.Printf("[%s] stripe disabled: %v", logPrefix, err)
 		writeError(w, http.StatusBadRequest, "Stripe checkout is not configured on this server")
 	case errors.Is(err, services.ErrStripeUnpaid):
-		writeError(w, http.StatusPaymentRequired, "Stripe checkout session payment has not been completed")
+		log.Printf("[%s] stripe session unpaid: %v", logPrefix, err)
+		writeError(w, http.StatusPaymentRequired, fmt.Sprintf("Stripe checkout session payment has not been completed: %v", err))
 	case errors.Is(err, services.ErrStripeAPI):
-		log.Printf("%s stripe error: %v", logPrefix, err)
-		writeError(w, http.StatusBadGateway, "Unable to verify payment with Stripe")
+		log.Printf("[%s] stripe API error: %v", logPrefix, err)
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("Unable to verify payment with Stripe: %v", err))
 	default:
-		log.Printf("%s error: %v", logPrefix, err)
-		writeError(w, http.StatusInternalServerError, "Checkout failed")
+		log.Printf("[%s] error: %v", logPrefix, err)
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("Checkout failed: %v", err))
 	}
 }
 

@@ -52,6 +52,7 @@ func main() {
 
 		stripeService := services.NewStripeService(cfg.StripeSecretKey, cfg.FrontendURL)
 		emailService := services.NewEmailService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.FrontendURL)
+		emailService.ConfigureSMTP(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
 
 		catalogService := services.NewCatalogService(repository.NewCatalogRepository(pool))
 		authService := services.NewAuthService(userRepo, tokens)

@@ -98,15 +98,20 @@ func (s *OrderService) Checkout(ctx context.Context, userID string, req models.C
 			return existing, false, nil
 		}
 
-		items, err := validateAndNormalizeItems(req.Items)
+		if s.stripe == nil || !s.stripe.Enabled() {
+			return nil, false, ErrStripeDisabled
+		}
+		metaItems, err := s.stripe.VerifySession(ctx, sessionID)
 		if err != nil {
 			return nil, false, err
 		}
 
-		if s.stripe == nil || !s.stripe.Enabled() {
-			return nil, false, ErrStripeDisabled
+		rawItems := req.Items
+		if len(rawItems) == 0 && len(metaItems) > 0 {
+			rawItems = metaItems
 		}
-		if err := s.stripe.VerifySessionPaid(ctx, sessionID); err != nil {
+		items, err := validateAndNormalizeItems(rawItems)
+		if err != nil {
 			return nil, false, err
 		}
 

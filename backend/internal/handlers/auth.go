@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"eneba-marketplace/backend/internal/models"
 	"eneba-marketplace/backend/internal/services"
@@ -47,6 +49,7 @@ func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		h.emailService.SendWelcomeEmailAsync(resp.User.Email, resp.User.FullName)
 	}
 
+	setAuthCookie(w, r, resp.Token)
 	writeJSON(w, http.StatusCreated, resp)
 }
 
@@ -70,7 +73,28 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setAuthCookie(w, r, resp.Token)
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func setAuthCookie(w http.ResponseWriter, r *http.Request, token string) {
+	if strings.TrimSpace(token) == "" {
+		return
+	}
+	isHTTPS := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	sameSite := http.SameSiteLaxMode
+	if isHTTPS {
+		sameSite = http.SameSiteNoneMode
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "eneba_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int((72 * time.Hour).Seconds()),
+		HttpOnly: true,
+		Secure:   isHTTPS,
+		SameSite: sameSite,
+	})
 }
 
 // decodeJSON reads a size-limited JSON body; it writes a 400 and returns false on failure.

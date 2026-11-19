@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/smtp"
 	"os"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"eneba-marketplace/backend/internal/auth"
+	"eneba-marketplace/backend/internal/config"
 	"eneba-marketplace/backend/internal/db"
 	"eneba-marketplace/backend/internal/handlers"
 	"eneba-marketplace/backend/internal/models"
@@ -640,6 +642,139 @@ func TestEmailService_HTMLTemplatesAndResendDelivery(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for async welcome email delivery")
+	}
+
+	// Verify Resend 403 sandbox rejection automatically falls back to SMTP when configured.
+	mockResendForbidden := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"message":"You can only send testing emails to your own email address"}`))
+	}))
+	t.Cleanup(mockResendForbidden.Close)
+
+	smtpDelivered := make(chan string, 1)
+	svcFallback := services.NewEmailService("re_test_123", "onboarding@resend.dev", "https://eneba-project-lime.vercel.app")
+	svcFallback.SetResendEndpoint(mockResendForbidden.URL)
+	svcFallback.ConfigureSMTP("smtp.gmail.com", "587", "sender@gmail.com", "app-pass")
+	svcFallback.SetSMTPSender(func(addr string, _ smtp.Auth, from string, to []string, msg []byte) error {
+		smtpDelivered <- fmt.Sprintf("addr=%s from=%s to=%s body=%s", addr, from, strings.Join(to, ","), string(msg))
+		return nil
+	})
+	svcFallback.SendWelcomeEmailAsync("buyer@example.com", "Buyer")
+
+	select {
+	case out := <-smtpDelivered:
+		if !strings.Contains(out, "addr=smtp.gmail.com:587") ||
+			!strings.Contains(out, "from=sender@gmail.com") ||
+			!strings.Contains(out, "to=buyer@example.com") {
+			t.Errorf("unexpected SMTP fallback payload: %s", out)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for SMTP fallback delivery after Resend 403")
+	}
+}
+
+func TestStripe_SanitizedEnvExactErrorsMetadataAndCookieAuth(t *testing.T) {
+	if got := config.CleanEnvValue("  \"sk_test_abc123\"\r\n"); got != "sk_test_abc123" {
+		t.Fatalf("CleanEnvValue failed: got %q", got)
+	}
+	if got := config.CleanFrontendURL(" 'https://eneba-project-lime.vercel.app/'\n", "production"); got != "https://eneba-project-lime.vercel.app" {
+		t.Fatalf("CleanFrontendURL failed: got %q", got)
+	}
+	if got := config.CleanFrontendURL("", "production"); got != "https://eneba-project-lime.vercel.app" {
+		t.Fatalf("CleanFrontendURL prod default failed: got %q", got)
+	}
+
+	stripeSvcCheck := services.NewStripeService(" 'sk_test_quoted'\n", "http://localhost:5173/")
+	if got := stripeSvcCheck.ResolveFrontendURL("https://eneba-project-lime.vercel.app"); got != "https://eneba-project-lime.vercel.app" {
+		t.Fatalf("ResolveFrontendURL should prefer Vercel origin over localhost default, got %q", got)
+	}
+
+	// Verify metadata recovery + cookie auth fallback + exact Stripe API error surface.
+	stripeSessionID := fmt.Sprintf("cs_test_meta_%d", time.Now().UnixNano())
+	failVerify := true
+	var capturedAuthHeader string
+	var capturedSuccessURL string
+
+	mockStripe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		capturedAuthHeader = r.Header.Get("Authorization")
+		if r.Method == http.MethodPost && r.URL.Path == "/v1/checkout/sessions" {
+			_ = r.ParseForm()
+			capturedSuccessURL = r.FormValue("success_url")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"id":  stripeSessionID,
+				"url": "https://checkout.stripe.com/c/pay/" + stripeSessionID,
+			})
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/checkout/sessions/"+stripeSessionID {
+			if failVerify {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":{"message":"Invalid API Key provided: sk_test_****"}}`))
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"id":             stripeSessionID,
+				"payment_status": "paid",
+				"status":         "complete",
+				"metadata": map[string]string{
+					"items_json": fmt.Sprintf(`[{"seller_offer_id":%q,"quantity":1}]`, offerGTAFirst),
+				},
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(mockStripe.Close)
+
+	env := setupEnvWithStripeKey(t, "\"sk_test_clean_key\"\n")
+	env.stripeService.SetBaseURL(mockStripe.URL)
+
+	user := env.registerUser(t)
+
+	// 1. Create session with Origin header from Vercel (succeeds using cleaned key without quotes/newlines).
+	createReq := httptest.NewRequest(http.MethodPost, "/api/checkout/stripe-session", strings.NewReader(
+		fmt.Sprintf(`{"items":[{"seller_offer_id":%q,"quantity":1}]}`, offerGTAFirst),
+	))
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.Header.Set("Authorization", "Bearer "+user.Token)
+	createReq.Header.Set("Origin", "https://eneba-project-lime.vercel.app")
+	createRec := httptest.NewRecorder()
+	env.handler.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create stripe session: expected 200, got %d: %s", createRec.Code, createRec.Body.String())
+	}
+	if capturedAuthHeader != "Bearer sk_test_clean_key" {
+		t.Errorf("expected cleaned Authorization header without quotes/newlines, got %q", capturedAuthHeader)
+	}
+	if capturedSuccessURL != "https://eneba-project-lime.vercel.app/checkout/success?session_id={CHECKOUT_SESSION_ID}" {
+		t.Errorf("expected Vercel success_url, got %q", capturedSuccessURL)
+	}
+
+	// 2. Stripe error returns exact detail in 502 response instead of generic masked string.
+	badRec := env.do(t, http.MethodPost, "/api/orders/checkout", user.Token, models.CheckoutRequest{
+		Items:           []models.CheckoutItem{{SellerOfferID: offerGTAFirst, Quantity: 1}},
+		PaymentMethod:   "stripe_test",
+		StripeSessionID: stripeSessionID,
+	})
+	if badRec.Code != http.StatusBadGateway {
+		t.Fatalf("expected 502 on Stripe 401, got %d: %s", badRec.Code, badRec.Body.String())
+	}
+	if !strings.Contains(badRec.Body.String(), "Invalid API Key provided") {
+		t.Errorf("expected exact Stripe API error detail in 502 response, got: %s", badRec.Body.String())
+	}
+
+	// 3. When browser returns via cookie auth and empty items array, VerifySession recovers items from metadata.
+	failVerify = false
+	cookieReq := httptest.NewRequest(http.MethodPost, "/api/orders/checkout", strings.NewReader(
+		fmt.Sprintf(`{"items":[],"payment_method":"stripe_test","stripe_session_id":%q}`, stripeSessionID),
+	))
+	cookieReq.Header.Set("Content-Type", "application/json")
+	cookieReq.AddCookie(&http.Cookie{Name: "eneba_token", Value: user.Token})
+	cookieRec := httptest.NewRecorder()
+	env.handler.ServeHTTP(cookieRec, cookieReq)
+	if cookieRec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 via cookie auth + metadata item recovery, got %d: %s", cookieRec.Code, cookieRec.Body.String())
 	}
 }
 

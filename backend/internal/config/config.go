@@ -19,6 +19,38 @@ type Config struct {
 	StripeSecretKey    string
 	ResendAPIKey       string
 	EmailFrom          string
+	SMTPHost           string
+	SMTPPort           string
+	SMTPUser           string
+	SMTPPass           string
+}
+
+// CleanEnvValue trims whitespace/newlines and strips accidental surrounding single/double quotes.
+func CleanEnvValue(raw string) string {
+	val := strings.TrimSpace(strings.Trim(raw, "\r\n"))
+	for len(val) >= 2 {
+		if (val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'') {
+			val = strings.TrimSpace(val[1 : len(val)-1])
+			continue
+		}
+		break
+	}
+	return val
+}
+
+// CleanFrontendURL normalizes FRONTEND_URL, ensuring a scheme and no trailing slash.
+func CleanFrontendURL(raw, env string) string {
+	val := strings.TrimRight(CleanEnvValue(raw), "/")
+	if val == "" {
+		if strings.EqualFold(env, "production") {
+			return "https://eneba-project-lime.vercel.app"
+		}
+		return "http://localhost:5173"
+	}
+	if !strings.HasPrefix(strings.ToLower(val), "http://") && !strings.HasPrefix(strings.ToLower(val), "https://") {
+		val = "https://" + val
+	}
+	return strings.TrimRight(val, "/")
 }
 
 func Load() *Config {
@@ -28,13 +60,14 @@ func Load() *Config {
 	_ = godotenv.Load("../.env")
 	_ = godotenv.Load("../.env.local")
 
-	frontendURL := strings.TrimRight(getEnv("FRONTEND_URL", "http://localhost:5173"), "/")
+	environment := getEnv("ENV", "development")
+	frontendURL := CleanFrontendURL(os.Getenv("FRONTEND_URL"), environment)
 
 	seenOrigins := make(map[string]struct{})
 	var origins []string
 	addOrigins := func(csv string) {
-		for _, o := range strings.Split(csv, ",") {
-			cleaned := strings.TrimRight(strings.TrimSpace(o), "/")
+		for _, o := range strings.Split(CleanEnvValue(csv), ",") {
+			cleaned := strings.TrimRight(CleanEnvValue(o), "/")
 			if cleaned == "" {
 				continue
 			}
@@ -62,16 +95,20 @@ func Load() *Config {
 		JWTSecret:          getEnv("JWT_SECRET", "super-secret-development-jwt-key-change-in-production-min32chars"),
 		JWTExpirationHours: expHours,
 		AllowedOrigins:     origins,
-		Environment:        getEnv("ENV", "development"),
+		Environment:        environment,
 		FrontendURL:        frontendURL,
-		StripeSecretKey:    strings.TrimSpace(os.Getenv("STRIPE_SECRET_KEY")),
-		ResendAPIKey:       strings.TrimSpace(os.Getenv("RESEND_API_KEY")),
+		StripeSecretKey:    CleanEnvValue(os.Getenv("STRIPE_SECRET_KEY")),
+		ResendAPIKey:       CleanEnvValue(os.Getenv("RESEND_API_KEY")),
 		EmailFrom:          getEnv("EMAIL_FROM", "onboarding@resend.dev"),
+		SMTPHost:           CleanEnvValue(os.Getenv("SMTP_HOST")),
+		SMTPPort:           getEnv("SMTP_PORT", "587"),
+		SMTPUser:           CleanEnvValue(os.Getenv("SMTP_USER")),
+		SMTPPass:           CleanEnvValue(os.Getenv("SMTP_PASS")),
 	}
 }
 
 func getEnv(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
+	if val := CleanEnvValue(os.Getenv(key)); val != "" {
 		return val
 	}
 	return defaultVal

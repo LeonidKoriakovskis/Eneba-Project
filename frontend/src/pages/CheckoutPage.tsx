@@ -162,7 +162,9 @@ export default function CheckoutPage({ defaultStripeEnabled = false }: CheckoutP
     try {
       if (paymentMethod === 'stripe' && stripeEnabled) {
         try {
-          sessionStorage.setItem(PENDING_STRIPE_ITEMS_KEY, JSON.stringify(requestItems));
+          const serialized = JSON.stringify(requestItems);
+          sessionStorage.setItem(PENDING_STRIPE_ITEMS_KEY, serialized);
+          localStorage.setItem(PENDING_STRIPE_ITEMS_KEY, serialized);
         } catch {
           /* ignore storage failures */
         }

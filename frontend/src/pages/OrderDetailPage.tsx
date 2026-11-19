@@ -43,7 +43,9 @@ function readCachedStripeOrder(sessionId: string | null): Order | null {
 
 function readPendingStripeItems(): CheckoutItemRequest[] {
   try {
-    const raw = sessionStorage.getItem(PENDING_STRIPE_ITEMS_KEY);
+    const raw =
+      sessionStorage.getItem(PENDING_STRIPE_ITEMS_KEY) ??
+      localStorage.getItem(PENDING_STRIPE_ITEMS_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -133,6 +135,7 @@ export default function OrderDetailPage() {
             sessionStorage.setItem(`eneba.lastOrder.${fulfilled.id}`, JSON.stringify(fulfilled));
             sessionStorage.setItem(`eneba.stripeOrder.${stripeSessionId}`, JSON.stringify(fulfilled));
             sessionStorage.removeItem(PENDING_STRIPE_ITEMS_KEY);
+            localStorage.removeItem(PENDING_STRIPE_ITEMS_KEY);
           } catch {
             /* ignore storage failures */
           }

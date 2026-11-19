@@ -1455,3 +1455,43 @@ Fix both the backend CORS policy and frontend URL resolution permanently:
 - `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
 - `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `4.71s`).
 - Committed changes to `main` and pushed to `origin/main` so both Render and Vercel auto-redeploy.
+
+
+---
+
+## Turn 31: Fix Production Stripe Checkout Verification, Bearer + Cookie Auth, Exact Error Surfacing & SMTP Fallback
+
+### 1. User Prompt
+```text
+In production (`https://eneba-project-lime.vercel.app` + `https://eneba-api-ztqj.onrender.com`), Stripe Checkout is failing with `Unable to verify payment with Stripe`. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Inspect `backend/` Stripe checkout & session verification handlers and fix why verification fails in production:
+1. Check `backend/` where `STRIPE_SECRET_KEY` and `FRONTEND_URL` are read: trim whitespace, newlines, and accidental surrounding quotes (`"` or `'`), and strip trailing slashes from `FRONTEND_URL`.
+2. Check how the Stripe verify endpoint authenticates and verifies the session after redirect from Stripe:
+   - Make sure cross-origin requests from `https://eneba-project-lime.vercel.app` work even when third-party cookies are blocked (accept `Authorization: Bearer <jwt>` from `localStorage` in addition to `SameSite=None; Secure` cookies).
+   - Return the **exact** error detail from Stripe or auth middleware in the HTTP response (and log it clearly to stdout) instead of masking it behind `Unable to verify payment with Stripe`.
+3. In `backend/` email sender, add optional standard SMTP fallback (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` — e.g., Gmail App Password) when `RESEND_API_KEY` is not used or when Resend rejects unverified sandbox recipients, so emails can be delivered to any email address if SMTP env vars are provided.
+4. Run `go test ./...` in `backend/` and `npm run build` in `frontend/`, commit, and push to `main`.
+```
+
+### 2. Summary of Changes
+1. **Sanitized Config & SMTP Env Vars (`backend/internal/config/config.go`, `.env.example`, `backend/.env.example`)**:
+   - Added `CleanEnvValue` (trims spaces, CR/LF newlines, and surrounding `'` or `"` quotes) and `CleanFrontendURL` (strips trailing slashes, ensures `http://`/`https://` scheme, and defaults to `https://eneba-project-lime.vercel.app` when `ENV=production`).
+   - Added `SMTPHost`, `SMTPPort` (default `"587"`), `SMTPUser`, and `SMTPPass` fields to `Config` and documented them in `.env.example` and `backend/.env.example`.
+2. **Stripe Session Verification, Origin-Aware Redirects & Metadata Recovery (`backend/internal/services/stripe.go`, `services/orders.go`, `handlers/stripe.go`, `handlers/orders.go`, `frontend/src/pages/CheckoutPage.tsx`, `OrderDetailPage.tsx`)**:
+   - Sanitized `secretKey` and `frontendURL` inside `NewStripeService`, raised HTTP timeout to `15s`, added `ResolveFrontendURL(requestOrigin)` so HTTPS Vercel callers redirect back to the Vercel origin even if `FRONTEND_URL` was left default on Render.
+   - Stored compact cart `items_json` in Stripe session `metadata` during `CreateCheckoutSession` and parsed it inside `VerifySession` (`services.OrderService.Checkout` recovers `req.Items` from Stripe metadata if client browser storage was cleared during external Stripe redirect).
+   - Updated `CheckoutPage.tsx` and `OrderDetailPage.tsx` to persist and read `eneba.pendingStripeItems` in both `sessionStorage` and `localStorage`.
+   - Surfaced exact Stripe / auth errors in logs and HTTP responses (`Unable to verify payment with Stripe: <detail>` on `502`, exact status on `402`).
+3. **Bearer + Cross-Site Cookie Authentication (`backend/internal/middleware/auth.go` & `handlers/auth.go`)**:
+   - Updated `HandleRegister` and `HandleLogin` to issue `eneba_token` `HttpOnly` cookies (`SameSite=None; Secure` on HTTPS requests, `SameSite=Lax` on local HTTP) alongside returning the JSON JWT.
+   - Updated `Authenticate` middleware to accept `Authorization: Bearer <jwt>` first, falling back to `eneba_token` / `token` cookies, and log/return the exact auth rejection reason on `401`.
+4. **Standard SMTP Email Fallback (`backend/internal/services/email.go` & `cmd/api/main.go`)**:
+   - Added `ConfigureSMTP(host, port, user, pass)` and `SendViaSMTP` supporting STARTTLS (`587`) and implicit TLS (`465`, automatically substituting `SMTP_USER` when `EMAIL_FROM` is still `onboarding@resend.dev`).
+   - Updated `dispatchAsync` so when `RESEND_API_KEY` is unset OR Resend fails/returns non-2xx (e.g., `403` sandbox restriction), it automatically delivers via configured SMTP before falling back to `[EMAIL PREVIEW]` stdout logs.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **18/18 tests passed** against live Neon Postgres (`ok eneba-marketplace/backend/internal/handlers 80.387s`), including `TestStripe_SanitizedEnvExactErrorsMetadataAndCookieAuth` and `TestEmailService_HTMLTemplatesAndResendDelivery` (verifying Resend `403` -> SMTP fallback).
+- `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
+- `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, `dist/assets/index-CyVTRpo2.js`, built in `6.85s`).
+- Committed changes to `main` and pushed to `origin/main` so Render and Vercel redeploy.
