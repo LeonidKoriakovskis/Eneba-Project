@@ -20,7 +20,10 @@ import (
 	"eneba-marketplace/backend/internal/models"
 )
 
-const defaultResendEndpoint = "https://api.resend.com/emails"
+const (
+	defaultResendEndpoint = "https://api.resend.com/emails"
+	defaultBrevoEndpoint  = "https://api.brevo.com/v3/smtp/email"
+)
 
 type SMTPConfig struct {
 	Host string
@@ -33,6 +36,8 @@ type SMTPConfig struct {
 type SMTPSendFunc func(addr string, auth smtp.Auth, from string, to []string, msg []byte) error
 
 type EmailService struct {
+	brevoAPIKey    string
+	brevoEndpoint  string
 	resendAPIKey   string
 	emailFrom      string
 	frontendURL    string
@@ -57,12 +62,29 @@ func NewEmailService(resendAPIKey, emailFrom, frontendURL string) *EmailService 
 		from = "onboarding@resend.dev"
 	}
 	return &EmailService{
+		brevoEndpoint:  defaultBrevoEndpoint,
 		resendAPIKey:   config.CleanEnvValue(resendAPIKey),
 		emailFrom:      from,
 		frontendURL:    normalizeEmailFrontendURL(frontendURL),
 		resendEndpoint: defaultResendEndpoint,
-		client:         &http.Client{Timeout: 8 * time.Second},
+		client:         &http.Client{Timeout: 15 * time.Second},
 	}
+}
+
+// ConfigureBrevo enables Brevo HTTPS transactional email delivery (port 443).
+// Whenever BREVO_API_KEY is non-empty, Brevo HTTPS API is prioritized first over SMTP.
+func (s *EmailService) ConfigureBrevo(apiKey string) {
+	s.brevoAPIKey = config.CleanEnvValue(apiKey)
+}
+
+// SetBrevoEndpoint overrides Brevo's API URL (primarily for automated tests).
+func (s *EmailService) SetBrevoEndpoint(endpoint string) {
+	s.brevoEndpoint = endpoint
+}
+
+// BrevoEnabled returns true when BREVO_API_KEY is configured.
+func (s *EmailService) BrevoEnabled() bool {
+	return s.brevoAPIKey != ""
 }
 
 // ConfigureSMTP enables SMTP delivery (e.g., Brevo or Gmail App Password) with optional SMTP_FROM.
@@ -306,7 +328,7 @@ func (s *EmailService) SendOrderKeyEmailAsync(toEmail, fullName string, order *m
 }
 
 func (s *EmailService) dispatchAsync(toEmail, subject, ctaURL, previewSummary, htmlBody string) {
-	if !s.smtpEnabled() && s.resendAPIKey == "" {
+	if !s.BrevoEnabled() && !s.smtpEnabled() && s.resendAPIKey == "" {
 		go func() {
 			log.Printf("[EMAIL PREVIEW] To=%s | Subject=%q | CTA=%s | %s", toEmail, subject, ctaURL, previewSummary)
 		}()
@@ -314,8 +336,16 @@ func (s *EmailService) dispatchAsync(toEmail, subject, ctaURL, previewSummary, h
 	}
 
 	go func() {
-		// Prioritize SMTP whenever SMTP_HOST is configured (e.g., Brevo / Gmail STARTTLS).
-		if s.smtpEnabled() {
+		// Prioritize Brevo HTTPS API (port 443) whenever BREVO_API_KEY is set.
+		// Only fall back to SMTP if BREVO_API_KEY is empty.
+		if s.BrevoEnabled() {
+			if err := s.SendViaBrevo(toEmail, subject, htmlBody); err == nil {
+				log.Printf("[Brevo API] ✓ Successfully delivered %q to=%s", subject, toEmail)
+				return
+			} else {
+				log.Printf("[Brevo API] ❌ Failed sending %q to=%s: %v", subject, toEmail, err)
+			}
+		} else if s.smtpEnabled() {
 			_, envelopeFrom := s.ResolveSMTPFrom()
 			log.Printf("[SMTP] Sending %q to=%s via %s:%s (user=%s, from=%s)", subject, toEmail, s.smtp.Host, s.smtp.Port, s.smtp.User, envelopeFrom)
 			if err := s.SendViaSMTP(toEmail, subject, htmlBody); err == nil {
@@ -337,6 +367,61 @@ func (s *EmailService) dispatchAsync(toEmail, subject, ctaURL, previewSummary, h
 
 		log.Printf("[EMAIL PREVIEW Fallback] To=%s | Subject=%q | CTA=%s | %s", toEmail, subject, ctaURL, previewSummary)
 	}()
+}
+
+// SendViaBrevo sends an HTML email over HTTPS (port 443) via Brevo's /v3/smtp/email API.
+func (s *EmailService) SendViaBrevo(toEmail, subject, htmlBody string) error {
+	if !s.BrevoEnabled() {
+		return fmt.Errorf("Brevo API is not configured (missing BREVO_API_KEY)")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	_, senderEmail := s.ResolveSMTPFrom()
+	payload := map[string]interface{}{
+		"sender": map[string]string{
+			"email": senderEmail,
+			"name":  "Eneba Demo",
+		},
+		"to": []map[string]string{
+			{"email": toEmail},
+		},
+		"subject":     subject,
+		"htmlContent": htmlBody,
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal brevo payload failed: %w", err)
+	}
+
+	endpoint := s.brevoEndpoint
+	if endpoint == "" {
+		endpoint = defaultBrevoEndpoint
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(raw))
+	if err != nil {
+		return fmt.Errorf("build brevo request failed: %w", err)
+	}
+	req.Header.Set("api-key", s.brevoAPIKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		log.Printf("[Brevo API] POST %s to=%s from=%s subject=%q -> ERROR: %v", endpoint, toEmail, senderEmail, subject, err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	trimmedBody := strings.TrimSpace(string(respBody))
+	log.Printf("[Brevo API] POST %s to=%s from=%s subject=%q -> HTTP %d | body=%s", endpoint, toEmail, senderEmail, subject, resp.StatusCode, trimmedBody)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("brevo HTTP %d: %s", resp.StatusCode, trimmedBody)
+	}
+	return nil
 }
 
 func (s *EmailService) sendViaResend(toEmail, subject, htmlBody string) error {

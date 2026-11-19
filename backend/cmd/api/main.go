@@ -52,8 +52,11 @@ func main() {
 
 		stripeService := services.NewStripeService(cfg.StripeSecretKey, cfg.FrontendURL)
 		emailService := services.NewEmailService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.FrontendURL)
+		emailService.ConfigureBrevo(cfg.BrevoAPIKey)
 		emailService.ConfigureSMTP(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
-		if cfg.SMTPHost != "" {
+		if cfg.BrevoAPIKey != "" {
+			log.Printf("✉️ Brevo HTTPS API transport enabled")
+		} else if cfg.SMTPHost != "" {
 			_, resolvedFrom := emailService.ResolveSMTPFrom()
 			log.Printf("✉️ SMTP transport enabled [host=%s:%s, user=%s, from=%s]", cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, resolvedFrom)
 		}

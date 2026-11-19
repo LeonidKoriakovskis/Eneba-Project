@@ -20,6 +20,7 @@ type Config struct {
 	Environment        string
 	FrontendURL        string
 	StripeSecretKey    string
+	BrevoAPIKey        string
 	ResendAPIKey       string
 	EmailFrom          string
 	SMTPHost           string
@@ -125,6 +126,7 @@ func Load() *Config {
 		Environment:        environment,
 		FrontendURL:        frontendURL,
 		StripeSecretKey:    CleanEnvValue(os.Getenv("STRIPE_SECRET_KEY")),
+		BrevoAPIKey:        CleanEnvValue(os.Getenv("BREVO_API_KEY")),
 		ResendAPIKey:       CleanEnvValue(os.Getenv("RESEND_API_KEY")),
 		EmailFrom:          getEnv("EMAIL_FROM", "onboarding@resend.dev"),
 		SMTPHost:           CleanEnvValue(os.Getenv("SMTP_HOST")),

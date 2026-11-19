@@ -1530,3 +1530,36 @@ Inspect `backend/` Stripe checkout session creation and the email sender service
 ### 3. Verification Results
 - `go test -v -count=1 ./...` (`Eneba Project/backend`): **18/18 tests passed** against live Neon Postgres (`ok eneba-marketplace/backend/internal/handlers 80.366s`).
 - Committed changes to `main` and pushed to `origin/main` so Render auto-redeploys.
+
+
+
+---
+
+## Turn 33: Prioritize Brevo HTTPS API (`BREVO_API_KEY`) Over SMTP
+
+### 1. User Prompt
+```text
+In Render logs, the backend is still starting with `✉️ SMTP transport enabled [host=smtp-relay.brevo.com:587]`, which fails with `dial tcp 1.179.119.1:587: i/o timeout` because Render free tier blocks outbound port 587. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Update `backend/` email service so `BREVO_API_KEY` (`https://api.brevo.com/v3/smtp/email` over HTTPS port 443) is checked FIRST and prioritized over SMTP:
+1. When `BREVO_API_KEY` is non-empty, log `✉️ Brevo HTTPS API transport enabled` on startup and send every order confirmation email via `POST https://api.brevo.com/v3/smtp/email` with header `api-key: <BREVO_API_KEY>`, `Content-Type: application/json`, sender `{"email": "<SMTP_FROM>", "name": "Eneba Demo"}`, recipient `[{"email": to}]`, `subject`, and `htmlContent` (only fall back to SMTP if `BREVO_API_KEY` is empty).
+2. Log the exact Brevo HTTP status code and response body on every send attempt, run `go test ./...` in `backend/`, commit, and push to `main`.
+```
+
+### 2. Summary of Changes
+1. **Brevo API Key Config & Env Examples (`backend/internal/config/config.go`, `.env.example`, `backend/.env.example`)**:
+   - Added `BrevoAPIKey` (`BREVO_API_KEY`, sanitized with `CleanEnvValue`) to `Config` in `backend/internal/config/config.go`.
+   - Documented `BREVO_API_KEY=` in `.env.example` and `backend/.env.example`, and synced local `BREVO_API_KEY` / `SMTP_*` keys into gitignored `backend/.env`.
+2. **Prioritized Brevo HTTPS API Transport (`backend/internal/services/email.go`)**:
+   - Added `defaultBrevoEndpoint` (`https://api.brevo.com/v3/smtp/email`), `ConfigureBrevo`, `SetBrevoEndpoint`, `BrevoEnabled()`, and `SendViaBrevo` on `EmailService` with a `15s` HTTP client timeout.
+   - `SendViaBrevo` resolves the verified sender address via `ResolveSMTPFrom()` (`SMTP_FROM` first), posts JSON `{"sender":{"email":"<SMTP_FROM>","name":"Eneba Demo"},"to":[{"email":"<to>"}],"subject":...,"htmlContent":...}` with `api-key` and `Content-Type: application/json` headers, and logs `[Brevo API] POST ... -> HTTP <status> | body=<response>` on every attempt.
+   - Updated `dispatchAsync` so `BrevoEnabled()` (`BREVO_API_KEY`) is checked **first** and SMTP (`SMTP_HOST`) is only attempted when `BREVO_API_KEY` is empty (`!s.BrevoEnabled()`), avoiding outbound port 587 dial timeouts on Render.
+3. **Startup Transport Logging (`backend/cmd/api/main.go`)**:
+   - Wired `emailService.ConfigureBrevo(cfg.BrevoAPIKey)` and logged `✉️ Brevo HTTPS API transport enabled` when `BREVO_API_KEY` is set (only logging `✉️ SMTP transport enabled [...]` when `BREVO_API_KEY` is empty and `SMTP_HOST` is set).
+4. **Tests (`backend/internal/handlers/checkout_test.go`)**:
+   - Expanded `TestEmailService_HTMLTemplatesAndResendDelivery` to assert that configuring both `BREVO_API_KEY` and `SMTP_HOST` sends order key emails exclusively via `POST /v3/smtp/email` with `api-key`, `Content-Type: application/json`, `"Eneba Demo"` sender, masked email HTML (`CLICK TO SEE KEY`), and never dials SMTP.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **18/18 tests passed** against live Neon Postgres (`ok eneba-marketplace/backend/internal/handlers 79.308s`), with Brevo API delivery verified in `TestEmailService_HTMLTemplatesAndResendDelivery` (`HTTP 201 | body={"messageId":"<brevo-msg-123>"}`).
+- `go build ./...` (`Eneba Project/backend`): compiled with exit code `0`.
+- Committed changes to `main` and pushed to `origin/main` so Render auto-redeploys.

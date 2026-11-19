@@ -671,6 +671,78 @@ func TestEmailService_HTMLTemplatesAndResendDelivery(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for prioritized SMTP delivery")
 	}
+
+	// Verify BREVO_API_KEY (HTTPS port 443) is prioritized first over BOTH SMTP and Resend.
+	type brevoCapture struct {
+		apiKey      string
+		contentType string
+		body        map[string]interface{}
+	}
+	brevoCh := make(chan brevoCapture, 1)
+	mockBrevo := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		brevoCh <- brevoCapture{
+			apiKey:      r.Header.Get("api-key"),
+			contentType: r.Header.Get("Content-Type"),
+			body:        body,
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"messageId":"<brevo-msg-123>"}`))
+	}))
+	t.Cleanup(mockBrevo.Close)
+
+	svcBrevoFirst := services.NewEmailService("re_test_123", "onboarding@resend.dev", "https://eneba-project-lime.vercel.app")
+	svcBrevoFirst.SetResendEndpoint(mockResendShouldNotRun.URL)
+	svcBrevoFirst.ConfigureBrevo("xkeysib-test-key")
+	svcBrevoFirst.SetBrevoEndpoint(mockBrevo.URL)
+	svcBrevoFirst.ConfigureSMTP("smtp-relay.brevo.com", "587", "brevo-login@smtp-brevo.com", "brevo-pass", "verified@eneba-demo.com")
+	svcBrevoFirst.SetSMTPSender(func(addr string, _ smtp.Auth, from string, to []string, msg []byte) error {
+		t.Errorf("SMTP should not be dialed when BREVO_API_KEY is configured")
+		return nil
+	})
+	svcBrevoFirst.SendOrderKeyEmailAsync("buyer@example.com", "Alex Gamer", &models.OrderDetail{
+		ID:         "abcdef12-0000-0000-0000-000000000001",
+		TotalCents: 6999,
+		Items: []models.OrderItemDetail{
+			{
+				ProductTitle:   "Grand Theft Auto VI",
+				Platform:       "PSN",
+				Region:         "GLOBAL",
+				SellerName:     "RockstarVault",
+				UnitPriceCents: 6999,
+				LicenseKey:     "GTAVI-SECRET-0001",
+			},
+		},
+	})
+
+	select {
+	case got := <-brevoCh:
+		if got.apiKey != "xkeysib-test-key" {
+			t.Errorf("expected api-key header 'xkeysib-test-key', got %q", got.apiKey)
+		}
+		if got.contentType != "application/json" {
+			t.Errorf("expected Content-Type 'application/json', got %q", got.contentType)
+		}
+		sender, _ := got.body["sender"].(map[string]interface{})
+		if sender["email"] != "verified@eneba-demo.com" || sender["name"] != "Eneba Demo" {
+			t.Errorf("unexpected Brevo sender: %+v", got.body["sender"])
+		}
+		toList, _ := got.body["to"].([]interface{})
+		if len(toList) != 1 {
+			t.Fatalf("expected 1 Brevo recipient, got %+v", got.body["to"])
+		}
+		firstTo, _ := toList[0].(map[string]interface{})
+		if firstTo["email"] != "buyer@example.com" {
+			t.Errorf("unexpected Brevo recipient: %+v", firstTo)
+		}
+		htmlContent, _ := got.body["htmlContent"].(string)
+		if !strings.Contains(htmlContent, "CLICK TO SEE KEY") || strings.Contains(htmlContent, "GTAVI-SECRET-0001") {
+			t.Errorf("unexpected Brevo htmlContent")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for prioritized Brevo HTTPS API delivery")
+	}
 }
 
 func TestStripe_SanitizedEnvExactErrorsMetadataAndCookieAuth(t *testing.T) {
