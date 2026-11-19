@@ -20,13 +20,24 @@ export const DEFAULT_PROD_API_URL = 'https://eneba-api-ztqj.onrender.com';
 export function resolveApiBaseUrl(apiUrl?: string, apiBaseUrl?: string, isProd = false): string {
   const cleaned = (apiUrl || apiBaseUrl || '')
     .trim()
+    .replace(/^VITE_API_(?:BASE_)?URL\s*=\s*/i, '')
+    .trim()
     .replace(/^['"]+|['"]+$/g, '')
     .trim()
     .replace(/\/+$/, '')
     .replace(/\/api$/i, '');
 
-  if (cleaned) return cleaned;
-  return isProd ? DEFAULT_PROD_API_URL : '';
+  if (isProd) {
+    const isAbsoluteHttp = /^https?:\/\//i.test(cleaned);
+    const pointsToLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(cleaned);
+    const pointsToVercelFrontend = /^https:\/\/[^/]+\.vercel\.app$/i.test(cleaned);
+    if (!isAbsoluteHttp || pointsToLocalhost || pointsToVercelFrontend) {
+      return DEFAULT_PROD_API_URL;
+    }
+    return cleaned;
+  }
+
+  return cleaned;
 }
 
 export const API_BASE_URL: string = resolveApiBaseUrl(
@@ -91,6 +102,12 @@ async function request<T>(path: string, { method = 'GET', body, token, signal }:
   }
 
   if (payload === null) {
+    const requestUrl = res.url || `${API_BASE_URL}${path}`;
+    console.error('[API Non-JSON Response]', {
+      status: res.status,
+      url: requestUrl,
+      bodyPreview: text.slice(0, 200),
+    });
     throw new ApiError(
       res.status,
       'Unexpected non-JSON response from API server. Please retry or check VITE_API_URL configuration.',

@@ -642,3 +642,43 @@ func TestEmailService_HTMLTemplatesAndResendDelivery(t *testing.T) {
 		t.Fatal("timed out waiting for async welcome email delivery")
 	}
 }
+
+
+func TestCORS_AllowsVercelAndLocalhostOrigins(t *testing.T) {
+	env := setupFullEnv(t)
+
+	allowed := []string{
+		"https://eneba-project-lime.vercel.app",
+		"https://eneba-preview-git-main.vercel.app",
+		"http://localhost:5173",
+	}
+	for _, origin := range allowed {
+		preReq := httptest.NewRequest(http.MethodOptions, "/api/homepage", nil)
+		preReq.Header.Set("Origin", origin)
+		preReq.Header.Set("Access-Control-Request-Method", "GET")
+		preRec := httptest.NewRecorder()
+		env.handler.ServeHTTP(preRec, preReq)
+		if got := preRec.Header().Get("Access-Control-Allow-Origin"); got != origin {
+			t.Errorf("OPTIONS origin %q: expected Access-Control-Allow-Origin=%q, got %q", origin, origin, got)
+		}
+
+		getReq := httptest.NewRequest(http.MethodGet, "/api/homepage", nil)
+		getReq.Header.Set("Origin", origin)
+		getRec := httptest.NewRecorder()
+		env.handler.ServeHTTP(getRec, getReq)
+		if getRec.Code != http.StatusOK {
+			t.Errorf("GET /api/homepage origin %q: expected 200, got %d", origin, getRec.Code)
+		}
+		if got := getRec.Header().Get("Access-Control-Allow-Origin"); got != origin {
+			t.Errorf("GET origin %q: expected Access-Control-Allow-Origin=%q, got %q", origin, origin, got)
+		}
+	}
+
+	evilReq := httptest.NewRequest(http.MethodGet, "/api/homepage", nil)
+	evilReq.Header.Set("Origin", "https://evil-site.example")
+	evilRec := httptest.NewRecorder()
+	env.handler.ServeHTTP(evilRec, evilReq)
+	if got := evilRec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("unexpected Access-Control-Allow-Origin for disallowed origin: %q", got)
+	}
+}

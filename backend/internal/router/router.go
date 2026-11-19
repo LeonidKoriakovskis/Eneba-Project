@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 )
 
 // Deps holds everything the HTTP layer needs. Nil handlers are simply not mounted.
@@ -33,14 +32,7 @@ func New(d Deps) http.Handler {
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(60 * time.Second))
 
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   d.AllowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
+	r.Use(authmw.CORS(d.AllowedOrigins))
 
 	r.Route("/api", func(r chi.Router) {
 		if d.Health != nil {

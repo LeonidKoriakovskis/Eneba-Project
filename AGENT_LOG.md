@@ -1424,3 +1424,34 @@ Fix both the rewrite ordering and the production API URL fallback so it works 10
 - `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
 - `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, `dist/assets/index-CwJnLk_E.js`, built in `6.40s`) and embeds `https://eneba-api-ztqj.onrender.com` in the compiled bundle.
 - Committed and pushed to `origin/main` so Vercel auto-deploys the production fix.
+
+
+---
+
+## Turn 30: Permanent Backend CORS (`https://*.vercel.app`) & Hardened Production API URL Resolution
+
+### 1. User Prompt
+```text
+The live Vercel site (`https://eneba-project-lime.vercel.app`) is STILL showing `Unexpected non-JSON response from API server. Please retry or check VITE_API_URL configuration.` after commit `c2c0839` (tested in Edge without Brave Shields as well). Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Fix both the backend CORS policy and frontend URL resolution permanently:
+1. In `backend/` CORS middleware (`backend/internal/middleware/` and `backend/cmd/api/main.go`), allow any origin matching `https://*.vercel.app` (including `https://eneba-project-lime.vercel.app`) in addition to `ALLOWED_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, and `localhost`, so Render NEVER rejects Vercel requests with a plain-text 403 error.
+2. In `frontend/src/api/client.ts`, ensure that whenever `import.meta.env.PROD` is true, if the resolved URL does NOT start with `http://` or `https://` (e.g., if `VITE_API_URL` was set to `/api` or empty in Vercel), it ALWAYS uses `'https://eneba-api-ztqj.onrender.com'`. Also log `response.status`, `response.url`, and the first 200 chars of response text in `console.error` when a non-JSON response is received.
+3. Run `go test ./...` in `backend/` and `npm test && npm run build` in `frontend/`, then commit and push to `main` so both Render and Vercel redeploy.
+```
+
+### 2. Summary of Changes
+1. **Backend CORS Middleware & Config (`backend/internal/middleware/cors.go`, `router.go`, `config.go`, `cmd/api/main.go`)**:
+   - Added `IsAllowedOrigin` and `CORS` middleware allowing `https://eneba-project-lime.vercel.app`, any `https://*.vercel.app` HTTPS origin, `http://localhost:*` / `http://127.0.0.1:*`, and configured origins/wildcards from `ALLOWED_ORIGINS`, `CORS_ALLOWED_ORIGINS`, and `FRONTEND_URL`.
+   - Wired `authmw.CORS(d.AllowedOrigins)` into `router.New` and logged active CORS origins on backend startup (`cmd/api/main.go`).
+   - Added `TestCORS_AllowsVercelAndLocalhostOrigins` in `backend/internal/handlers/checkout_test.go` verifying `OPTIONS` and `GET /api/homepage` CORS headers for Vercel and localhost origins while rejecting untrusted origins.
+2. **Hardened Frontend API URL & Diagnostic Logging (`frontend/src/api/client.ts` & `tests/purchaseFlow.test.mjs`)**:
+   - Updated `resolveApiBaseUrl(apiUrl, apiBaseUrl, isProd)` so in production builds (`import.meta.env.PROD`), any value that does not start with `http://` or `https://` (e.g., empty or `/api`), or points to `localhost`/`127.0.0.1`/`*.vercel.app`, unconditionally resolves to `https://eneba-api-ztqj.onrender.com` (also strips accidental `VITE_API_URL=` / `VITE_API_BASE_URL=` prefixes, quotes, trailing slashes, and trailing `/api`).
+   - Added `console.error('[API Non-JSON Response]', { status, url, bodyPreview })` (first 200 characters of text) whenever a non-JSON body is received before throwing `ApiError`.
+   - Expanded `purchaseFlow.test.mjs` assertions covering `/api`, `localhost`, `*.vercel.app`, prefixed `VITE_API_URL=...`, and `console.error` diagnostic payload.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **17/17 tests passed** (`ok eneba-marketplace/backend/internal/handlers 75.968s`).
+- `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
+- `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `4.71s`).
+- Committed changes to `main` and pushed to `origin/main` so both Render and Vercel auto-redeploy.

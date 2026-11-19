@@ -21,7 +21,7 @@ import (
 
 func main() {
 	cfg := config.Load()
-	log.Printf("Starting Eneba Marketplace Backend [Env: %s, Port: %s]...", cfg.Environment, cfg.Port)
+	log.Printf("Starting Eneba Marketplace Backend [Env: %s, Port: %s, CORS: %v + https://*.vercel.app]...", cfg.Environment, cfg.Port, cfg.AllowedOrigins)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

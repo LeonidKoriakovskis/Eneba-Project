@@ -514,9 +514,21 @@ test('resolveApiBaseUrl handles env fallbacks, prod default, trailing slashes, a
   assert.equal(resolveApiBaseUrl('  ', undefined, false), '');
   assert.equal(resolveApiBaseUrl(undefined, undefined, false), '');
   assert.equal(resolveApiBaseUrl('', '', true), DEFAULT_PROD_API_URL);
+  assert.equal(resolveApiBaseUrl('/api', '', true), DEFAULT_PROD_API_URL);
+  assert.equal(resolveApiBaseUrl('http://localhost:8080', '', true), DEFAULT_PROD_API_URL);
+  assert.equal(resolveApiBaseUrl('https://eneba-project-lime.vercel.app', '', true), DEFAULT_PROD_API_URL);
+  assert.equal(
+    resolveApiBaseUrl('VITE_API_URL=https://eneba-api-ztqj.onrender.com/api/', '', true),
+    'https://eneba-api-ztqj.onrender.com',
+  );
   assert.equal(resolveApiBaseUrl(undefined, undefined, true), 'https://eneba-api-ztqj.onrender.com');
 
   const originalFetch = globalThis.fetch;
+  const originalConsoleError = console.error;
+  const loggedErrors = [];
+  console.error = (...args) => {
+    loggedErrors.push(args);
+  };
   globalThis.fetch = async () => new Response('<!doctype html><html><body>SPA</body></html>', {
     status: 200,
     headers: { 'Content-Type': 'text/html' },
@@ -527,7 +539,13 @@ test('resolveApiBaseUrl handles env fallbacks, prod default, trailing slashes, a
       () => api.getHomepage(),
       (err) => err instanceof ApiError && /Unexpected non-JSON response/.test(err.message),
     );
+    assert.equal(loggedErrors.length, 1);
+    assert.equal(loggedErrors[0][0], '[API Non-JSON Response]');
+    assert.equal(loggedErrors[0][1].status, 200);
+    assert.match(loggedErrors[0][1].url, /\/api\/homepage$/);
+    assert.match(loggedErrors[0][1].bodyPreview, /^<!doctype html>/);
   } finally {
     globalThis.fetch = originalFetch;
+    console.error = originalConsoleError;
   }
 });

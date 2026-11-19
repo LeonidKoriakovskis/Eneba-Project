@@ -28,18 +28,28 @@ func Load() *Config {
 	_ = godotenv.Load("../.env")
 	_ = godotenv.Load("../.env.local")
 
-	originsStr := os.Getenv("ALLOWED_ORIGINS")
-	if originsStr == "" {
-		originsStr = getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
-	}
+	frontendURL := strings.TrimRight(getEnv("FRONTEND_URL", "http://localhost:5173"), "/")
 
+	seenOrigins := make(map[string]struct{})
 	var origins []string
-	for _, o := range strings.Split(originsStr, ",") {
-		o = strings.TrimRight(strings.TrimSpace(o), "/")
-		if o != "" {
-			origins = append(origins, o)
+	addOrigins := func(csv string) {
+		for _, o := range strings.Split(csv, ",") {
+			cleaned := strings.TrimRight(strings.TrimSpace(o), "/")
+			if cleaned == "" {
+				continue
+			}
+			key := strings.ToLower(cleaned)
+			if _, exists := seenOrigins[key]; !exists {
+				seenOrigins[key] = struct{}{}
+				origins = append(origins, cleaned)
+			}
 		}
 	}
+
+	addOrigins(os.Getenv("ALLOWED_ORIGINS"))
+	addOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	addOrigins(frontendURL)
+	addOrigins("https://eneba-project-lime.vercel.app,http://localhost:5173,http://localhost:3000")
 
 	expHours, err := strconv.Atoi(getEnv("JWT_EXPIRATION_HOURS", "72"))
 	if err != nil || expHours <= 0 {
@@ -53,7 +63,7 @@ func Load() *Config {
 		JWTExpirationHours: expHours,
 		AllowedOrigins:     origins,
 		Environment:        getEnv("ENV", "development"),
-		FrontendURL:        strings.TrimRight(getEnv("FRONTEND_URL", "http://localhost:5173"), "/"),
+		FrontendURL:        frontendURL,
 		StripeSecretKey:    strings.TrimSpace(os.Getenv("STRIPE_SECRET_KEY")),
 		ResendAPIKey:       strings.TrimSpace(os.Getenv("RESEND_API_KEY")),
 		EmailFrom:          getEnv("EMAIL_FROM", "onboarding@resend.dev"),
