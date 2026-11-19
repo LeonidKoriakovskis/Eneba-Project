@@ -20,6 +20,7 @@ export {
 } from '../../src/context/WishlistContext.tsx';
 export { AuthProvider } from '../../src/context/AuthContext.tsx';
 export { sanitizeRedirect, formatPrice, formatDateTime } from '../../src/utils/format.ts';
+export { api, ApiError, resolveApiBaseUrl } from '../../src/api/client.ts';
 export { OrderKeyCard } from '../../src/components/orders/OrderKeyCard.tsx';
 export { CartDrawer } from '../../src/components/CartDrawer.tsx';
 export { CustomSelect } from '../../src/components/CustomSelect.tsx';
@@ -84,6 +85,7 @@ try {
     plugins: [mockNavigatePlugin],
     define: {
       'import.meta.env.VITE_API_URL': '"http://localhost:8080"',
+      'import.meta.env.VITE_API_BASE_URL': '""',
     },
   });
 

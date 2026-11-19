@@ -7,6 +7,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 
 const {
+  ApiError,
   AuthProvider,
   CartDrawer,
   CartPage,
@@ -29,9 +30,11 @@ const {
   WishlistPage,
   WishlistProvider,
   AuthPage,
+  api,
   cartReducer,
   isFuzzyMatch,
   parseMultiParam,
+  resolveApiBaseUrl,
   sanitizeRedirect,
   serializeMultiParam,
   toggleMultiSelect,
@@ -500,4 +503,27 @@ test('wishlistReducer persists items in eneba_wishlist, Navbar shows live count 
   assert.match(fullWishlistHtml, /aria-pressed="true"/);
   assert.match(fullWishlistHtml, /Move to Cart/);
   localStorage.clear();
+});
+
+
+test('resolveApiBaseUrl handles env fallbacks, trailing slashes, and rejects non-JSON 200 responses', async () => {
+  assert.equal(resolveApiBaseUrl('https://eneba-api-ztqj.onrender.com/', ''), 'https://eneba-api-ztqj.onrender.com');
+  assert.equal(resolveApiBaseUrl('', 'https://eneba-api-ztqj.onrender.com/api/'), 'https://eneba-api-ztqj.onrender.com');
+  assert.equal(resolveApiBaseUrl('  ', undefined), '');
+  assert.equal(resolveApiBaseUrl(undefined, undefined), '');
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('<!doctype html><html><body>SPA</body></html>', {
+    status: 200,
+    headers: { 'Content-Type': 'text/html' },
+  });
+
+  try {
+    await assert.rejects(
+      () => api.getHomepage(),
+      (err) => err instanceof ApiError && /Unexpected non-JSON response/.test(err.message),
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -15,7 +15,15 @@ import type {
   StripeSessionResponse,
 } from '../types/api';
 
-export const API_BASE_URL: string = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+export function resolveApiBaseUrl(apiUrl?: string, apiBaseUrl?: string): string {
+  const raw = (apiUrl || apiBaseUrl || '').trim().replace(/\/+$/, '');
+  return raw.replace(/\/api$/i, '');
+}
+
+export const API_BASE_URL: string = resolveApiBaseUrl(
+  import.meta.env.VITE_API_URL,
+  import.meta.env.VITE_API_BASE_URL,
+);
 
 export class ApiError extends Error {
   readonly status: number;
@@ -70,6 +78,13 @@ async function request<T>(path: string, { method = 'GET', body, token, signal }:
         ? payload.error
         : `Request failed with status ${res.status}`;
     throw new ApiError(res.status, message, payload);
+  }
+
+  if (payload === null) {
+    throw new ApiError(
+      res.status,
+      'Unexpected non-JSON response from API server. Please retry or check VITE_API_URL configuration.',
+    );
   }
 
   return payload as T;

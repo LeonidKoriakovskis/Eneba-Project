@@ -1362,3 +1362,36 @@ I've completed `neon login` in my terminal. Please proceed with steps 3–6: run
   - `GET /api/products?q=cyberpank` → `total=1 top_slug=cyberpunk-2077-phantom-liberty-bundle price_cents=2899` (`200 OK`, `119.4ms`)
   - `GET /api/products?max_price=3000` → `total=8 max_price_seen=2999` (`200 OK`, `120.9ms`)
   - `GET /api/products/grand-theft-auto-vi` → `title=Grand Theft Auto VI offers=3 lowest_price_cents=6999` (`200 OK`, `242.0ms`)
+
+
+---
+
+## Turn 28: Fix Production API Base URL Resolution & Add Vercel `/api` Proxy Rewrite
+
+### 1. User Prompt
+```text
+My deployed Vercel frontend (`https://eneba-project-lime.vercel.app`) is showing `Cannot read properties of null (reading 'blocks')` even though `https://eneba-api-ztqj.onrender.com/api/homepage` returns valid JSON and `VITE_API_URL=https://eneba-api-ztqj.onrender.com` is set in Vercel. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Fix the production API URL resolution in `frontend/` so the deployed Vercel app always connects cleanly to the Render backend:
+1. Inspect `frontend/src/api/` (and `frontend/vite.config.ts`) to see what environment variable name it checks (`VITE_API_URL` vs `VITE_API_BASE_URL`) and how base URLs are constructed (make sure it checks `import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''`, strips any trailing slash, and safely handles non-JSON responses instead of crashing on `null.blocks`).
+2. Add a `frontend/vercel.json` configuration with SPA fallback (`"source": "/(.*)", "destination": "/index.html"`) AND an `/api/:path*` proxy rewrite to `https://eneba-api-ztqj.onrender.com/api/:path*` as a rock-solid backup.
+3. Run `npm run build` in `frontend/` to confirm everything compiles cleanly, then commit and push to `main` so Vercel auto-deploys the fix.
+```
+
+### 2. Root Cause & Summary of Changes
+- **Root Cause**:
+  1. `frontend/src/api/client.ts` defaulted `API_BASE_URL` to `'http://localhost:8080'` when `VITE_API_URL` wasn't resolved during a build (or checked only `VITE_API_URL` and not `VITE_API_BASE_URL`), AND if an API/HTML fallback returned HTTP `200 OK` with non-JSON text (like Vercel's `/(.*) -> /index.html` catch-all when relative `/api/...` hit Vercel without an `/api` rewrite), `request<T>()` swallowed the `JSON.parse` failure and returned `null`, causing `res.blocks` (`Cannot read properties of null (reading 'blocks')`) in `HomePage.tsx`.
+  2. `frontend/vercel.json` only had the SPA catch-all `/(.*) -> /index.html` and did not proxy `/api/:path*` to `https://eneba-api-ztqj.onrender.com/api/:path*`.
+- **Changes**:
+  1. **`frontend/src/vite-env.d.ts`**: Added `readonly VITE_API_BASE_URL?: string;` to `ImportMetaEnv`.
+  2. **`frontend/src/api/client.ts`**:
+     - Exported `resolveApiBaseUrl(apiUrl, apiBaseUrl)` checking `import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''`, stripping trailing slashes and any accidental trailing `/api` suffix, and defaulting to `''` so Vite's local dev proxy and Vercel's `/api/:path*` rewrite work automatically.
+     - Updated `request<T>()` to throw an explicit `ApiError` when an `ok` response yields `payload === null` (non-JSON / empty body) instead of returning `null`.
+  3. **`frontend/src/pages/HomePage.tsx`**: Added optional chaining guard `res?.blocks ?? []` when sorting homepage blocks.
+  4. **`frontend/vercel.json`**: Added `"source": "/api/:path*"` rewrite to `"https://eneba-api-ztqj.onrender.com/api/:path*"` before the SPA fallback `"/(.*)" -> "/index.html"`.
+  5. **`frontend/scripts/run-tests.mjs` & `frontend/tests/purchaseFlow.test.mjs`**: Added unit tests covering `resolveApiBaseUrl` env fallbacks/trailing slash/trailing `/api` normalization and `ApiError` rejection when receiving non-JSON `200` HTML responses.
+
+### 3. Verification Results
+- `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
+- `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `7.01s`).
+- Committed changes to `main` and pushed to `origin/main` to trigger Vercel auto-deployment.

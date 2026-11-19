@@ -53,7 +53,7 @@ export default function HomePage() {
     api
       .getHomepage(ctrl.signal)
       .then((res) => {
-        const blocks = [...(res.blocks ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+        const blocks = [...(res?.blocks ?? [])].sort((a, b) => a.sort_order - b.sort_order);
         setState({ status: 'ready', blocks });
       })
       .catch((err: unknown) => {
