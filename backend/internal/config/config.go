@@ -1,12 +1,15 @@
 package config
 
 import (
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
 )
+
+const DefaultProdFrontendURL = "https://eneba-project-lime.vercel.app"
 
 type Config struct {
 	Port               string
@@ -23,6 +26,7 @@ type Config struct {
 	SMTPPort           string
 	SMTPUser           string
 	SMTPPass           string
+	SMTPFrom           string
 }
 
 // CleanEnvValue trims whitespace/newlines and strips accidental surrounding single/double quotes.
@@ -38,19 +42,42 @@ func CleanEnvValue(raw string) string {
 	return val
 }
 
-// CleanFrontendURL normalizes FRONTEND_URL, ensuring a scheme and no trailing slash.
+// ValidateSingleHTTPURL parses a concrete HTTP/HTTPS origin (rejecting wildcards like '*',
+// commas, whitespace, or invalid hosts) and returns canonical scheme://host.
+func ValidateSingleHTTPURL(raw string) (string, bool) {
+	cleaned := CleanEnvValue(raw)
+	if cleaned == "" || strings.ContainsAny(cleaned, "*, \t\r\n") {
+		return "", false
+	}
+
+	lower := strings.ToLower(cleaned)
+	if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+		cleaned = "https://" + cleaned
+	}
+
+	u, err := url.Parse(cleaned)
+	if err != nil {
+		return "", false
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if (scheme != "http" && scheme != "https") || u.Host == "" {
+		return "", false
+	}
+	return scheme + "://" + u.Host, true
+}
+
+// CleanFrontendURL normalizes FRONTEND_URL, picking the first valid non-wildcard HTTP/HTTPS URL
+// or falling back to DefaultProdFrontendURL in production / http://localhost:5173 in dev.
 func CleanFrontendURL(raw, env string) string {
-	val := strings.TrimRight(CleanEnvValue(raw), "/")
-	if val == "" {
-		if strings.EqualFold(env, "production") {
-			return "https://eneba-project-lime.vercel.app"
+	for _, token := range strings.Split(CleanEnvValue(raw), ",") {
+		if valid, ok := ValidateSingleHTTPURL(token); ok {
+			return valid
 		}
-		return "http://localhost:5173"
 	}
-	if !strings.HasPrefix(strings.ToLower(val), "http://") && !strings.HasPrefix(strings.ToLower(val), "https://") {
-		val = "https://" + val
+	if strings.EqualFold(CleanEnvValue(env), "production") {
+		return DefaultProdFrontendURL
 	}
-	return strings.TrimRight(val, "/")
+	return "http://localhost:5173"
 }
 
 func Load() *Config {
@@ -104,6 +131,7 @@ func Load() *Config {
 		SMTPPort:           getEnv("SMTP_PORT", "587"),
 		SMTPUser:           CleanEnvValue(os.Getenv("SMTP_USER")),
 		SMTPPass:           CleanEnvValue(os.Getenv("SMTP_PASS")),
+		SMTPFrom:           CleanEnvValue(os.Getenv("SMTP_FROM")),
 	}
 }
 

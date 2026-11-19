@@ -53,7 +53,11 @@ func (h *StripeHandler) HandleCreateStripeSession(w http.ResponseWriter, r *http
 		return
 	}
 
-	session, err := h.stripe.CreateCheckoutSession(r.Context(), lines, userID, r.Header.Get("Origin"))
+	callerOrigin := r.Header.Get("Origin")
+	if callerOrigin == "" {
+		callerOrigin = r.Header.Get("Referer")
+	}
+	session, err := h.stripe.CreateCheckoutSession(r.Context(), lines, userID, callerOrigin)
 	if err != nil {
 		writeCheckoutError(w, err, "stripe-session")
 		return

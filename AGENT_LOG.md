@@ -1495,3 +1495,38 @@ Inspect `backend/` Stripe checkout & session verification handlers and fix why v
 - `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
 - `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, `dist/assets/index-CyVTRpo2.js`, built in `6.85s`).
 - Committed changes to `main` and pushed to `origin/main` so Render and Vercel redeploy.
+
+
+---
+
+## Turn 32: Fix Stripe Redirect URL Validation & Prioritize Brevo/STARTTLS SMTP (`SMTP_FROM`)
+
+### 1. User Prompt
+```text
+In production (`https://eneba-project-lime.vercel.app` + `https://eneba-api-ztqj.onrender.com`), clicking Continue to Stripe returns `Unable to verify payment with Stripe: stripe api error (HTTP 400): Not a valid URL`, and Brevo SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`) is not sending confirmation emails. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Inspect `backend/` Stripe checkout session creation and the email sender service, and fix both:
+1. In the Stripe Checkout session creation handler, ensure `success_url` and `cancel_url` ALWAYS resolve to a valid `https://` URL (e.g., validate that the base URL starts with `http://` or `https://`, does not contain `*` or commas, and defaults to `https://eneba-project-lime.vercel.app` in production if `FRONTEND_URL` is invalid or empty). Log the exact `success_url` and `cancel_url` sent to Stripe.
+2. In the `backend/` email sender, prioritize SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` using Go `net/smtp` with STARTTLS on port 587) whenever `SMTP_HOST` is configured, and log the exact SMTP connection/send result or error to stdout on every order confirmation email.
+3. Run `go test ./...` in `backend/`, commit, and push to `main`.
+```
+
+### 2. Summary of Changes
+1. **Strict Single-URL Validation & `SMTP_FROM` Config (`backend/internal/config/config.go`, `.env.example`, `backend/.env.example`)**:
+   - Exported `DefaultProdFrontendURL` (`"https://eneba-project-lime.vercel.app"`) and `ValidateSingleHTTPURL(raw string) (string, bool)` checking concrete `http://` / `https://` URLs with non-empty host and zero wildcards (`*`), commas, or whitespace.
+   - Updated `CleanFrontendURL` to split comma-separated values if present, select the first valid non-wildcard HTTP/HTTPS URL, and fall back to `https://eneba-project-lime.vercel.app` in `production` whenever `FRONTEND_URL` is invalid or empty.
+   - Added `SMTPFrom` (`SMTP_FROM`) to `Config` and documented it in `.env.example` and `backend/.env.example`.
+2. **Stripe Checkout URL Guarantee & Logging (`backend/internal/services/stripe.go` & `handlers/stripe.go`)**:
+   - Validated `frontendURL` in `NewStripeService` and `ResolveFrontendURL` using `ValidateSingleHTTPURL`, rejecting wildcards/commas, preferring valid HTTPS caller origins (`Origin` or `Referer` fallback in `HandleCreateStripeSession`) when configured `FRONTEND_URL` is localhost/invalid, and guaranteeing fallback to `https://eneba-project-lime.vercel.app`.
+   - Logged exact `success_url` and `cancel_url` sent to Stripe on every `CreateCheckoutSession` call.
+3. **Prioritized SMTP + STARTTLS Transport & Detailed Logging (`backend/internal/services/email.go` & `cmd/api/main.go`)**:
+   - Added `From` (`SMTP_FROM`) to `SMTPConfig` (`ConfigureSMTP` + `ResolveSMTPFrom()` formatting `"Eneba Demo Marketplace <addr>"` header and bare envelope address).
+   - Updated `dispatchAsync` so SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`) is prioritized over Resend whenever `SMTP_HOST` is configured, logging `[SMTP] Sending ...`, `[SMTP] ✓ Successfully delivered ...`, or `[SMTP] ❌ Failed sending ...` on every email.
+   - Enhanced `sendMailTLSOrSTARTTLS` with 15s dial timeout, 25s connection deadline, explicit `STARTTLS` TLS upgrade on port 587 (or implicit TLS on port 465), `PlainAuth`, and stage-specific error messages.
+   - Wired `cfg.SMTPFrom` into `main.go` with a startup SMTP status log line.
+4. **Tests (`backend/internal/handlers/checkout_test.go`)**:
+   - Updated `TestEmailService_HTMLTemplatesAndResendDelivery` to prove Brevo/STARTTLS SMTP prioritization when both `SMTP_HOST` and `RESEND_API_KEY` are set, and expanded `TestStripe_SanitizedEnvExactErrorsMetadataAndCookieAuth` to assert wildcard and comma-polluted `FRONTEND_URL` values resolve cleanly to `https://eneba-project-lime.vercel.app`.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **18/18 tests passed** against live Neon Postgres (`ok eneba-marketplace/backend/internal/handlers 80.366s`).
+- Committed changes to `main` and pushed to `origin/main` so Render auto-redeploys.

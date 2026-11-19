@@ -11,10 +11,12 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/mail"
 	"net/smtp"
 	"strings"
 	"time"
 
+	"eneba-marketplace/backend/internal/config"
 	"eneba-marketplace/backend/internal/models"
 )
 
@@ -25,6 +27,7 @@ type SMTPConfig struct {
 	Port string
 	User string
 	Pass string
+	From string
 }
 
 type SMTPSendFunc func(addr string, auth smtp.Auth, from string, to []string, msg []byte) error
@@ -39,47 +42,46 @@ type EmailService struct {
 	client         *http.Client
 }
 
-func cleanEmailConfigValue(raw string) string {
-	val := strings.TrimSpace(strings.Trim(raw, "\r\n"))
-	for len(val) >= 2 {
-		if (val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'') {
-			val = strings.TrimSpace(val[1 : len(val)-1])
-			continue
+func normalizeEmailFrontendURL(raw string) string {
+	for _, token := range strings.Split(config.CleanEnvValue(raw), ",") {
+		if valid, ok := config.ValidateSingleHTTPURL(token); ok {
+			return valid
 		}
-		break
 	}
-	return val
+	return config.DefaultProdFrontendURL
 }
 
 func NewEmailService(resendAPIKey, emailFrom, frontendURL string) *EmailService {
-	from := cleanEmailConfigValue(emailFrom)
+	from := config.CleanEnvValue(emailFrom)
 	if from == "" {
 		from = "onboarding@resend.dev"
 	}
-	front := strings.TrimRight(cleanEmailConfigValue(frontendURL), "/")
-	if front == "" {
-		front = "http://localhost:5173"
-	}
 	return &EmailService{
-		resendAPIKey:   cleanEmailConfigValue(resendAPIKey),
+		resendAPIKey:   config.CleanEnvValue(resendAPIKey),
 		emailFrom:      from,
-		frontendURL:    front,
+		frontendURL:    normalizeEmailFrontendURL(frontendURL),
 		resendEndpoint: defaultResendEndpoint,
 		client:         &http.Client{Timeout: 8 * time.Second},
 	}
 }
 
-// ConfigureSMTP enables optional SMTP delivery/fallback (e.g. Gmail App Password).
-func (s *EmailService) ConfigureSMTP(host, port, user, pass string) {
-	p := cleanEmailConfigValue(port)
+// ConfigureSMTP enables SMTP delivery (e.g., Brevo or Gmail App Password) with optional SMTP_FROM.
+// Whenever SMTP_HOST is configured, SMTP is prioritized over Resend.
+func (s *EmailService) ConfigureSMTP(host, port, user, pass string, from ...string) {
+	p := config.CleanEnvValue(port)
 	if p == "" {
 		p = "587"
 	}
+	smtpFrom := ""
+	if len(from) > 0 {
+		smtpFrom = config.CleanEnvValue(from[0])
+	}
 	s.smtp = SMTPConfig{
-		Host: cleanEmailConfigValue(host),
+		Host: config.CleanEnvValue(host),
 		Port: p,
-		User: cleanEmailConfigValue(user),
-		Pass: cleanEmailConfigValue(pass),
+		User: config.CleanEnvValue(user),
+		Pass: config.CleanEnvValue(pass),
+		From: smtpFrom,
 	}
 	if s.smtp.Host != "" && s.smtpSender == nil {
 		s.smtpSender = sendMailTLSOrSTARTTLS
@@ -95,6 +97,28 @@ func (s *EmailService) smtpEnabled() bool {
 	return s.smtp.Host != "" && s.smtp.User != "" && s.smtp.Pass != ""
 }
 
+// ResolveSMTPFrom returns the From header value and bare envelope email address for SMTP delivery.
+func (s *EmailService) ResolveSMTPFrom() (string, string) {
+	raw := s.smtp.From
+	if raw == "" && !strings.EqualFold(s.emailFrom, "onboarding@resend.dev") {
+		raw = s.emailFrom
+	}
+	if raw == "" && strings.Contains(s.smtp.User, "@") {
+		raw = s.smtp.User
+	}
+	if raw == "" {
+		raw = s.emailFrom
+	}
+
+	if parsed, err := mail.ParseAddress(raw); err == nil && parsed.Address != "" {
+		if parsed.Name != "" {
+			return parsed.String(), parsed.Address
+		}
+		return fmt.Sprintf("Eneba Demo Marketplace <%s>", parsed.Address), parsed.Address
+	}
+	return fmt.Sprintf("Eneba Demo Marketplace <%s>", raw), raw
+}
+
 // SetResendEndpoint overrides Resend's API URL (useful for testing).
 func (s *EmailService) SetResendEndpoint(endpoint string) {
 	s.resendEndpoint = endpoint
@@ -106,10 +130,7 @@ func formatCentsEUR(cents int) string {
 
 // BuildWelcomeEmailHTML builds the Eneba-themed transactional registration HTML email.
 func BuildWelcomeEmailHTML(fullName, frontendURL string) string {
-	front := strings.TrimRight(cleanEmailConfigValue(frontendURL), "/")
-	if front == "" {
-		front = "http://localhost:5173"
-	}
+	front := normalizeEmailFrontendURL(frontendURL)
 	safeName := html.EscapeString(strings.TrimSpace(fullName))
 	if safeName == "" {
 		safeName = "Gamer"
@@ -160,10 +181,7 @@ func BuildWelcomeEmailHTML(fullName, frontendURL string) string {
 
 // BuildOrderKeyEmailHTML builds the Eneba-themed digital key fulfillment HTML email.
 func BuildOrderKeyEmailHTML(fullName string, order *models.OrderDetail, frontendURL string) string {
-	front := strings.TrimRight(cleanEmailConfigValue(frontendURL), "/")
-	if front == "" {
-		front = "http://localhost:5173"
-	}
+	front := normalizeEmailFrontendURL(frontendURL)
 	safeName := html.EscapeString(strings.TrimSpace(fullName))
 	if safeName == "" {
 		safeName = "Gamer"
@@ -288,7 +306,7 @@ func (s *EmailService) SendOrderKeyEmailAsync(toEmail, fullName string, order *m
 }
 
 func (s *EmailService) dispatchAsync(toEmail, subject, ctaURL, previewSummary, htmlBody string) {
-	if s.resendAPIKey == "" && !s.smtpEnabled() {
+	if !s.smtpEnabled() && s.resendAPIKey == "" {
 		go func() {
 			log.Printf("[EMAIL PREVIEW] To=%s | Subject=%q | CTA=%s | %s", toEmail, subject, ctaURL, previewSummary)
 		}()
@@ -296,6 +314,18 @@ func (s *EmailService) dispatchAsync(toEmail, subject, ctaURL, previewSummary, h
 	}
 
 	go func() {
+		// Prioritize SMTP whenever SMTP_HOST is configured (e.g., Brevo / Gmail STARTTLS).
+		if s.smtpEnabled() {
+			_, envelopeFrom := s.ResolveSMTPFrom()
+			log.Printf("[SMTP] Sending %q to=%s via %s:%s (user=%s, from=%s)", subject, toEmail, s.smtp.Host, s.smtp.Port, s.smtp.User, envelopeFrom)
+			if err := s.SendViaSMTP(toEmail, subject, htmlBody); err == nil {
+				log.Printf("[SMTP] ✓ Successfully delivered %q to=%s via %s:%s", subject, toEmail, s.smtp.Host, s.smtp.Port)
+				return
+			} else {
+				log.Printf("[SMTP] ❌ Failed sending %q to=%s via %s:%s: %v", subject, toEmail, s.smtp.Host, s.smtp.Port, err)
+			}
+		}
+
 		if s.resendAPIKey != "" {
 			if err := s.sendViaResend(toEmail, subject, htmlBody); err == nil {
 				log.Printf("✓ Sent transactional email %q via Resend to %s", subject, toEmail)
@@ -303,15 +333,6 @@ func (s *EmailService) dispatchAsync(toEmail, subject, ctaURL, previewSummary, h
 			} else {
 				log.Printf("⚠️ Resend email delivery failed (%s): %v", toEmail, err)
 			}
-		}
-
-		if s.smtpEnabled() {
-			if err := s.SendViaSMTP(toEmail, subject, htmlBody); err != nil {
-				log.Printf("⚠️ SMTP fallback delivery failed (%s): %v", toEmail, err)
-				return
-			}
-			log.Printf("✓ Sent transactional email %q via SMTP fallback to %s", subject, toEmail)
-			return
 		}
 
 		log.Printf("[EMAIL PREVIEW Fallback] To=%s | Subject=%q | CTA=%s | %s", toEmail, subject, ctaURL, previewSummary)
@@ -353,22 +374,18 @@ func (s *EmailService) sendViaResend(toEmail, subject, htmlBody string) error {
 	return nil
 }
 
-// SendViaSMTP sends an HTML email using configured SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS credentials.
+// SendViaSMTP sends an HTML email using configured SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / SMTP_FROM.
 func (s *EmailService) SendViaSMTP(toEmail, subject, htmlBody string) error {
 	if !s.smtpEnabled() {
-		return fmt.Errorf("SMTP is not configured")
+		return fmt.Errorf("SMTP is not configured (missing SMTP_HOST, SMTP_USER, or SMTP_PASS)")
 	}
 
-	from := s.emailFrom
-	if strings.EqualFold(from, "onboarding@resend.dev") && strings.Contains(s.smtp.User, "@") {
-		from = s.smtp.User
-	}
-
+	headerFrom, envelopeFrom := s.ResolveSMTPFrom()
 	addr := net.JoinHostPort(s.smtp.Host, s.smtp.Port)
 	auth := smtp.PlainAuth("", s.smtp.User, s.smtp.Pass, s.smtp.Host)
 
 	msg := strings.Join([]string{
-		fmt.Sprintf("From: Eneba Demo Marketplace <%s>", from),
+		fmt.Sprintf("From: %s", headerFrom),
 		fmt.Sprintf("To: %s", toEmail),
 		fmt.Sprintf("Subject: %s", subject),
 		"MIME-Version: 1.0",
@@ -381,52 +398,76 @@ func (s *EmailService) SendViaSMTP(toEmail, subject, htmlBody string) error {
 	if sender == nil {
 		sender = sendMailTLSOrSTARTTLS
 	}
-	return sender(addr, auth, from, []string{toEmail}, []byte(msg))
+	return sender(addr, auth, envelopeFrom, []string{toEmail}, []byte(msg))
 }
 
 func sendMailTLSOrSTARTTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
-		return err
-	}
-	if port != "465" {
-		return smtp.SendMail(addr, auth, from, to, msg)
+		return fmt.Errorf("invalid SMTP address %q: %w", addr, err)
 	}
 
-	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 10 * time.Second}, "tcp", addr, &tls.Config{
-		ServerName: host,
-		MinVersion: tls.VersionTLS12,
-	})
+	rawConn, err := net.DialTimeout("tcp", addr, 15*time.Second)
 	if err != nil {
-		return err
+		return fmt.Errorf("dial %s: %w", addr, err)
 	}
-	defer conn.Close()
+	_ = rawConn.SetDeadline(time.Now().Add(25 * time.Second))
 
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		return err
+	var client *smtp.Client
+	if port == "465" {
+		tlsConn := tls.Client(rawConn, &tls.Config{
+			ServerName: host,
+			MinVersion: tls.VersionTLS12,
+		})
+		if err := tlsConn.Handshake(); err != nil {
+			_ = rawConn.Close()
+			return fmt.Errorf("implicit TLS handshake with %s: %w", addr, err)
+		}
+		client, err = smtp.NewClient(tlsConn, host)
+		if err != nil {
+			_ = tlsConn.Close()
+			return fmt.Errorf("SMTP client init (465): %w", err)
+		}
+	} else {
+		client, err = smtp.NewClient(rawConn, host)
+		if err != nil {
+			_ = rawConn.Close()
+			return fmt.Errorf("SMTP client init: %w", err)
+		}
+		if ok, _ := client.Extension("STARTTLS"); ok {
+			if err := client.StartTLS(&tls.Config{
+				ServerName: host,
+				MinVersion: tls.VersionTLS12,
+			}); err != nil {
+				_ = client.Close()
+				return fmt.Errorf("STARTTLS upgrade with %s: %w", addr, err)
+			}
+		}
 	}
 	defer client.Quit()
 
 	if auth != nil {
 		if err := client.Auth(auth); err != nil {
-			return err
+			return fmt.Errorf("SMTP auth with %s: %w", addr, err)
 		}
 	}
 	if err := client.Mail(from); err != nil {
-		return err
+		return fmt.Errorf("SMTP MAIL FROM <%s>: %w", from, err)
 	}
 	for _, rcpt := range to {
 		if err := client.Rcpt(rcpt); err != nil {
-			return err
+			return fmt.Errorf("SMTP RCPT TO <%s>: %w", rcpt, err)
 		}
 	}
 	w, err := client.Data()
 	if err != nil {
-		return err
+		return fmt.Errorf("SMTP DATA: %w", err)
 	}
 	if _, err := w.Write(msg); err != nil {
-		return err
+		return fmt.Errorf("SMTP write body: %w", err)
 	}
-	return w.Close()
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("SMTP finalize message: %w", err)
+	}
+	return nil
 }

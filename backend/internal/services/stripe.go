@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"eneba-marketplace/backend/internal/config"
 	"eneba-marketplace/backend/internal/models"
 )
 
@@ -32,27 +33,20 @@ type StripeService struct {
 }
 
 func cleanStripeConfigValue(raw string) string {
-	val := strings.TrimSpace(strings.Trim(raw, "\r\n"))
-	for len(val) >= 2 {
-		if (val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'') {
-			val = strings.TrimSpace(val[1 : len(val)-1])
-			continue
-		}
-		break
-	}
-	return val
+	return config.CleanEnvValue(raw)
+}
+
+func sanitizeRedirectBaseURL(candidate string) (string, bool) {
+	return config.ValidateSingleHTTPURL(candidate)
 }
 
 func normalizeStripeFrontendURL(raw string) string {
-	val := strings.TrimRight(cleanStripeConfigValue(raw), "/")
-	if val == "" {
-		return "http://localhost:5173"
+	for _, token := range strings.Split(cleanStripeConfigValue(raw), ",") {
+		if valid, ok := sanitizeRedirectBaseURL(token); ok {
+			return valid
+		}
 	}
-	lower := strings.ToLower(val)
-	if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
-		val = "https://" + val
-	}
-	return strings.TrimRight(val, "/")
+	return config.DefaultProdFrontendURL
 }
 
 func NewStripeService(secretKey, frontendURL string) *StripeService {
@@ -73,19 +67,24 @@ func (s *StripeService) Enabled() bool {
 	return s.secretKey != ""
 }
 
-// ResolveFrontendURL returns the sanitized redirect base URL for Stripe success/cancel links.
-// When an origin header from a HTTPS/Vercel client is available and server FRONTEND_URL is
-// still the localhost default, prefer the caller's origin so production redirects back to Vercel.
+// ResolveFrontendURL returns a validated concrete http:// or https:// base URL for Stripe redirects.
+// It rejects wildcards/commas, prefers HTTPS Vercel caller origins over a localhost default, and
+// guarantees production builds always fall back to https://eneba-project-lime.vercel.app.
 func (s *StripeService) ResolveFrontendURL(requestOrigin string) string {
-	reqOrigin := strings.TrimRight(cleanStripeConfigValue(requestOrigin), "/")
-	if reqOrigin != "" {
-		lower := strings.ToLower(reqOrigin)
-		if (strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "http://localhost")) &&
-			(s.frontendURL == "" || s.frontendURL == "http://localhost:5173") {
-			return reqOrigin
-		}
+	reqOrigin, reqOK := sanitizeRedirectBaseURL(requestOrigin)
+	configured, cfgOK := sanitizeRedirectBaseURL(s.frontendURL)
+
+	isLocalCfg := !cfgOK || strings.Contains(strings.ToLower(configured), "localhost") || strings.Contains(configured, "127.0.0.1")
+	if reqOK && strings.HasPrefix(reqOrigin, "https://") && isLocalCfg {
+		return reqOrigin
 	}
-	return s.frontendURL
+	if cfgOK {
+		return configured
+	}
+	if reqOK {
+		return reqOrigin
+	}
+	return config.DefaultProdFrontendURL
 }
 
 type stripeAPIErrorPayload struct {
@@ -115,11 +114,14 @@ func (s *StripeService) CreateCheckoutSession(ctx context.Context, lines []model
 		origin = requestOrigin[0]
 	}
 	redirectBase := s.ResolveFrontendURL(origin)
+	successURL := redirectBase + "/checkout/success?session_id={CHECKOUT_SESSION_ID}"
+	cancelURL := redirectBase + "/checkout?canceled=1"
+	log.Printf("[stripe] creating checkout session user=%s | success_url=%s | cancel_url=%s", userID, successURL, cancelURL)
 
 	form := url.Values{}
 	form.Set("mode", "payment")
-	form.Set("success_url", redirectBase+"/checkout/success?session_id={CHECKOUT_SESSION_ID}")
-	form.Set("cancel_url", redirectBase+"/checkout?canceled=1")
+	form.Set("success_url", successURL)
+	form.Set("cancel_url", cancelURL)
 	form.Set("client_reference_id", userID)
 
 	metaItems := make([]models.CheckoutItem, 0, len(lines))

@@ -644,32 +644,32 @@ func TestEmailService_HTMLTemplatesAndResendDelivery(t *testing.T) {
 		t.Fatal("timed out waiting for async welcome email delivery")
 	}
 
-	// Verify Resend 403 sandbox rejection automatically falls back to SMTP when configured.
-	mockResendForbidden := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte(`{"message":"You can only send testing emails to your own email address"}`))
+	// Verify SMTP is prioritized whenever SMTP_HOST is configured (even if RESEND_API_KEY is also set).
+	mockResendShouldNotRun := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"Resend should not be called first when SMTP_HOST is configured"}`))
 	}))
-	t.Cleanup(mockResendForbidden.Close)
+	t.Cleanup(mockResendShouldNotRun.Close)
 
 	smtpDelivered := make(chan string, 1)
-	svcFallback := services.NewEmailService("re_test_123", "onboarding@resend.dev", "https://eneba-project-lime.vercel.app")
-	svcFallback.SetResendEndpoint(mockResendForbidden.URL)
-	svcFallback.ConfigureSMTP("smtp.gmail.com", "587", "sender@gmail.com", "app-pass")
-	svcFallback.SetSMTPSender(func(addr string, _ smtp.Auth, from string, to []string, msg []byte) error {
+	svcSMTPFirst := services.NewEmailService("re_test_123", "onboarding@resend.dev", "https://eneba-project-lime.vercel.app")
+	svcSMTPFirst.SetResendEndpoint(mockResendShouldNotRun.URL)
+	svcSMTPFirst.ConfigureSMTP("smtp-relay.brevo.com", "587", "brevo-login@smtp-brevo.com", "brevo-pass", "verified@eneba-demo.com")
+	svcSMTPFirst.SetSMTPSender(func(addr string, _ smtp.Auth, from string, to []string, msg []byte) error {
 		smtpDelivered <- fmt.Sprintf("addr=%s from=%s to=%s body=%s", addr, from, strings.Join(to, ","), string(msg))
 		return nil
 	})
-	svcFallback.SendWelcomeEmailAsync("buyer@example.com", "Buyer")
+	svcSMTPFirst.SendWelcomeEmailAsync("buyer@example.com", "Buyer")
 
 	select {
 	case out := <-smtpDelivered:
-		if !strings.Contains(out, "addr=smtp.gmail.com:587") ||
-			!strings.Contains(out, "from=sender@gmail.com") ||
+		if !strings.Contains(out, "addr=smtp-relay.brevo.com:587") ||
+			!strings.Contains(out, "from=verified@eneba-demo.com") ||
 			!strings.Contains(out, "to=buyer@example.com") {
-			t.Errorf("unexpected SMTP fallback payload: %s", out)
+			t.Errorf("unexpected SMTP payload: %s", out)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for SMTP fallback delivery after Resend 403")
+		t.Fatal("timed out waiting for prioritized SMTP delivery")
 	}
 }
 
@@ -683,10 +683,20 @@ func TestStripe_SanitizedEnvExactErrorsMetadataAndCookieAuth(t *testing.T) {
 	if got := config.CleanFrontendURL("", "production"); got != "https://eneba-project-lime.vercel.app" {
 		t.Fatalf("CleanFrontendURL prod default failed: got %q", got)
 	}
+	if got := config.CleanFrontendURL("https://*.vercel.app", "production"); got != "https://eneba-project-lime.vercel.app" {
+		t.Fatalf("CleanFrontendURL must reject wildcard patterns, got %q", got)
+	}
+	if got := config.CleanFrontendURL("https://*.vercel.app, https://eneba-project-lime.vercel.app/", "production"); got != "https://eneba-project-lime.vercel.app" {
+		t.Fatalf("CleanFrontendURL must pick valid non-wildcard URL from comma list, got %q", got)
+	}
 
 	stripeSvcCheck := services.NewStripeService(" 'sk_test_quoted'\n", "http://localhost:5173/")
 	if got := stripeSvcCheck.ResolveFrontendURL("https://eneba-project-lime.vercel.app"); got != "https://eneba-project-lime.vercel.app" {
 		t.Fatalf("ResolveFrontendURL should prefer Vercel origin over localhost default, got %q", got)
+	}
+	stripeWildcard := services.NewStripeService("sk_test_key", "https://*.vercel.app")
+	if got := stripeWildcard.ResolveFrontendURL(""); got != "https://eneba-project-lime.vercel.app" {
+		t.Fatalf("NewStripeService must reject wildcard URL and fall back to production Vercel URL, got %q", got)
 	}
 
 	// Verify metadata recovery + cookie auth fallback + exact Stripe API error surface.

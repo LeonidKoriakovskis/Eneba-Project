@@ -52,7 +52,11 @@ func main() {
 
 		stripeService := services.NewStripeService(cfg.StripeSecretKey, cfg.FrontendURL)
 		emailService := services.NewEmailService(cfg.ResendAPIKey, cfg.EmailFrom, cfg.FrontendURL)
-		emailService.ConfigureSMTP(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
+		emailService.ConfigureSMTP(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
+		if cfg.SMTPHost != "" {
+			_, resolvedFrom := emailService.ResolveSMTPFrom()
+			log.Printf("✉️ SMTP transport enabled [host=%s:%s, user=%s, from=%s]", cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, resolvedFrom)
+		}
 
 		catalogService := services.NewCatalogService(repository.NewCatalogRepository(pool))
 		authService := services.NewAuthService(userRepo, tokens)
