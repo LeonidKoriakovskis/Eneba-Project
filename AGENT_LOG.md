@@ -1563,3 +1563,33 @@ Update `backend/` email service so `BREVO_API_KEY` (`https://api.brevo.com/v3/sm
 - `go test -v -count=1 ./...` (`Eneba Project/backend`): **18/18 tests passed** against live Neon Postgres (`ok eneba-marketplace/backend/internal/handlers 79.308s`), with Brevo API delivery verified in `TestEmailService_HTMLTemplatesAndResendDelivery` (`HTTP 201 | body={"messageId":"<brevo-msg-123>"}`).
 - `go build ./...` (`Eneba Project/backend`): compiled with exit code `0`.
 - Committed changes to `main` and pushed to `origin/main` so Render auto-redeploys.
+
+
+
+---
+
+## Turn 34: Final Submission Preparation (`README.md`, `.env.example`, Secret Audit & Verification)
+
+### 1. User Prompt
+```text
+Prepare the repository for final submission to Eneba. Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+1. Update `README.md` so the live production links (`https://eneba-project-lime.vercel.app` and `https://eneba-api-ztqj.onrender.com`) are clearly featured at the top, document the full architecture (React/Vite/TypeScript frontend, Go/Chi/PostgreSQL backend, Stripe Checkout Test Mode, and Brevo HTTPS transactional email delivery), and include clear local setup & testing instructions.
+2. Verify that no real API keys or `.env` files are tracked in git, and update `backend/.env.example` and `frontend/.env.example` with clean placeholder variable names (`STRIPE_SECRET_KEY`, `BREVO_API_KEY`, `SMTP_FROM`, `FRONTEND_URL`, `DATABASE_URL`, `JWT_SECRET`, `VITE_API_BASE_URL`).
+3. Verify `AGENT_LOG.md` is complete and up to date, run `go test ./...` and `npm run build`, commit, and push to `main`.
+```
+
+### 2. Summary of Changes
+1. **Submission-Ready Documentation (`README.md`)**:
+   - Featured the live production URLs (`https://eneba-project-lime.vercel.app`, `https://eneba-api-ztqj.onrender.com`, and `/api/health`) prominently at the top alongside the pre-seeded reviewer credentials (`gamer@eneba-demo.com` / `Password123!`) and **Grand Theft Auto VI** catalog spotlight.
+   - Documented the complete full-stack architecture: React 18 / Vite 6 / TypeScript / Tailwind CSS SPA on Vercel, Go 1.22+ / Chi v5 / `pgx/v5` REST API on Render, Neon PostgreSQL 16+ (`pg_trgm` fuzzy search, `homepage_blocks` JSONB hydration, `FOR UPDATE SKIP LOCKED` key allocation, 17 games, 40 seller offers, 123 keys), Stripe Checkout Test Mode (with simulated fallback), and Brevo HTTPS port 443 transactional email delivery with masked key links (`CLICK TO SEE KEY` -> `/orders/:id`).
+   - Added complete local setup, Docker/Neon migration (`cmd/migrate`), environment variable reference, and backend/frontend automated test commands.
+2. **Clean Environment Templates & Secret Audit (`.env.example`, `backend/.env.example`, `frontend/.env.example`)**:
+   - Standardized clean non-secret placeholder templates across `.env.example`, `backend/.env.example` (`DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, `STRIPE_SECRET_KEY`, `BREVO_API_KEY`, `SMTP_FROM`, plus fallback SMTP/Resend vars), and `frontend/.env.example` (`VITE_API_BASE_URL` / `VITE_API_URL`).
+   - Audited `git ls-files` and scanned all tracked files with `git grep`: zero `.env` files and zero live API keys/passwords are tracked in git.
+
+### 3. Verification Results
+- `go test -v -count=1 ./...` (`Eneba Project/backend`): **18/18 tests passed** (`ok eneba-marketplace/backend/internal/handlers 79.925s`).
+- `npm test` (`Eneba Project/frontend`): **15/15 tests passed** (`pass 15`, `fail 0`, `308.45ms`).
+- `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, `dist/index.html 1.18 kB`, `dist/assets/index-B_LM2bCs.css 44.68 kB`, `dist/assets/index-CyVTRpo2.js 316.58 kB`, built in `4.31s`).
+- Committed changes to `main` and pushed to `origin/main`.

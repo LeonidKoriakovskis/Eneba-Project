@@ -6,104 +6,81 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B_pg__trgm-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
-A full-stack digital game key marketplace modeled after **eneba.com**, built for the **Eneba Software Engineer Internship** assignment. It combines a dynamic CMS-driven storefront, PostgreSQL trigram fuzzy search, multi-seller offer comparison, JWT authentication, and race-condition-free atomic digital key allocation.
+**Live Frontend (Vercel):** https://eneba-project-lime.vercel.app  
+**Live Backend API (Render):** https://eneba-api-ztqj.onrender.com (Health check: https://eneba-api-ztqj.onrender.com/api/health)
+
+A full-stack digital game key marketplace modeled after **eneba.com**, built for the **Eneba Software Engineer Internship** assignment. It combines a CMS-driven React storefront, PostgreSQL trigram fuzzy search (`pg_trgm`), multi-seller offer comparison, Stripe Checkout (Test Mode), Brevo HTTPS transactional email delivery with masked security key links, and concurrency-safe atomic digital key allocation.
 
 ---
 
 ## Live Demo & Reviewer Quick-Start
 
-| Service | Deployment URL | Purpose |
+| Service | Live Production URL | Purpose |
 | :--- | :--- | :--- |
-| **Live Frontend (Vercel)** | `https://<your-vercel-app>.vercel.app` | Interactive Storefront, Cart, Checkout & Key Vault |
-| **Backend Health Check (Render)** | `https://<your-render-api>.onrender.com/api/health` | Verifies Go API & PostgreSQL connection pool |
+| **Frontend Storefront (Vercel)** | https://eneba-project-lime.vercel.app | Interactive catalog, fuzzy search, multi-seller offer comparison, cart, Stripe Test Mode checkout & Key Vault |
+| **Backend REST API (Render)** | https://eneba-api-ztqj.onrender.com | Go (`chi/v5` + `pgx/v5`) API connected to Neon Serverless PostgreSQL |
+| **Health & DB Check** | https://eneba-api-ztqj.onrender.com/api/health | Verifies API uptime and PostgreSQL pool connectivity |
 
-### Pre-Seeded Reviewer Account
-You can browse and search freely, register a new account at `/register`, or use the one-click **Quick-fill** demo button on `/login`:
+> **Render Cold-Start Note:** The backend runs on Render's free tier and may take ~20–40s to wake on the very first request after inactivity.
 
-- **Email:** `gamer@eneba-demo.com`
-- **Password:** `Password123!`
-
-> Note: `AuthService.EnsureDemoUsers` idempotently upserts both `gamer@eneba-demo.com` and `intern@eneba-demo.com` with valid `bcrypt` hashes at server startup alongside `backend/migrations/002_seed.sql`.
+### Pre-Seeded Reviewer Account & Catalog Spotlight
+- **Demo Credentials** (or use the one-click **Quick-fill** button on `/login`, or register your own real email to test transactional email delivery):
+  - **Email:** `gamer@eneba-demo.com`
+  - **Password:** `Password123!`
+- **Featured Spotlight:** **Grand Theft Auto VI** (`slug: grand-theft-auto-vi`) sits at #1 in the Hero Banner & Best Sellers with 3 competing sellers (`RockstarVault`, `KeyEmpire`, `NordicKeys`) and 12 seeded activation keys ready to purchase.
 
 ---
 
 ## System Architecture
 
 ```text
-+-----------------------------------+        REST JSON + JWT         +------------------------------------------+
-|     React 18 + TS + Tailwind      | -----------------------------> |     Go HTTP API (chi v5 + pgx/v5)        |
-|  (/frontend -> Vercel SPA)        | <----------------------------- |  (/backend -> Docker / Render)           |
-+-----------------------------------+                                +------------------------------------------+
-                                                                                          |
-                                                                                          | pgxpool (Tx + Row Locks)
-                                                                                          v
-                                                                     +------------------------------------------+
-                                                                     |  PostgreSQL 16+ (pg_trgm + uuid-ossp)    |
-                                                                     |  (Docker / Neon / Supabase)              |
-                                                                     +------------------------------------------+
++------------------------------------------+      REST JSON + JWT / Cookies     +----------------------------------------------+
+|  React 18 + Vite 6 + TS + Tailwind CSS   | ---------------------------------> |  Go 1.22+ HTTP API (chi/v5 + pgx/v5)         |
+|  (/frontend -> Vercel SPA)               | <--------------------------------- |  (/backend -> Docker / Render Web Service)   |
++------------------------------------------+                                    +----------------------------------------------+
+                                                                                        |                   |                 |
+                                                    Hosted Test Mode Checkout           |                   | HTTPS Port 443  | pgxpool (Tx + Row Locks)
+                                                                                        v                   v                 v
+                                                                       +---------------------+  +-------------------+  +---------------------------------------+
+                                                                       | Stripe Checkout API |  | Brevo HTTPS API   |  | Neon PostgreSQL 16+ (pg_trgm)         |
+                                                                       | /v1/checkout/       |  | POST /v3/smtp/    |  | 17 games, 40 offers, 123 keys,        |
+                                                                       | sessions            |  | email (443)       |  | 4 homepage_blocks                     |
+                                                                       +---------------------+  +-------------------+  +---------------------------------------+
 ```
 
 ```mermaid
 graph LR
-    FE["React + TypeScript + Tailwind\n(/frontend)"] -->|"GET /api/homepage, /api/products\nPOST /api/orders/checkout (JWT)"| API["Go REST API (chi + pgx/v5)\n(/backend)"]
-    API -->|"GIN pg_trgm Search\nJSONB Block Hydration\nFOR UPDATE SKIP LOCKED"| DB[("PostgreSQL 16+\n(Docker / Neon / Supabase)")]
+    FE["React 18 + Vite + TS + Tailwind\n(Vercel: eneba-project-lime.vercel.app)"] -->|"REST API + JWT / Cookies\n(/api/homepage, /api/products, /api/orders)"| API["Go REST API (chi/v5 + pgx/v5)\n(Render: eneba-api-ztqj.onrender.com)"]
+    API -->|"GIN pg_trgm Search\nJSONB Hydration\nFOR UPDATE SKIP LOCKED"| DB[("Neon PostgreSQL 16+\n(pg_trgm + uuid-ossp)")]
+    API -->|"STRIPE_SECRET_KEY\nSession Create & Verify"| STRIPE["Stripe Checkout\n(Test Mode)"]
+    API -->|"BREVO_API_KEY\nPOST /v3/smtp/email (HTTPS 443)"| BREVO["Brevo Transactional\nEmail API"]
 ```
 
 ---
 
-## End-to-End Purchase Flow
+## End-to-End Purchase & Security Flow
 
-```text
-[Homepage / Fuzzy Search]
-       |  Dynamic JSONB blocks + pg_trgm typo-tolerant lookup (?q=cybrpunk)
-       v
-[Product & Multi-Seller Comparison]
-       |  Compare seller ratings, stock counts, and prices -> Add to Cart
-       v
-[Cart Review (/cart)]
-       |  Quantity clamped to live offer stock -> Proceed to Checkout
-       v
-[Authentication (/login?redirect=/checkout)]
-       |  Register or Sign In (bcrypt + HS256 JWT) -> Auto-redirect back
-       v
-[Simulated Payment (/checkout)]
-       |  POST /api/orders/checkout -> Atomic DB transaction locks keys
-       v
-[Order Receipt & Key Reveal (/orders/:id & /orders)]
-          Reveal masked key, one-click Copy Key, or revisit Order History
-```
+1. **Discovery & Fuzzy Search (`/`, `/store`):**
+   - Homepage sections (`hero_banner`, `best_sellers`, `flash_deals`, `recommended`) are dynamically driven by PostgreSQL `homepage_blocks` JSONB records and hydrated in a single batched CTE query.
+   - Storefront filtering combines typo-tolerant `pg_trgm` full-text/trigram ranking (`?q=cybrpunk`), multi-select `platform` & `region` filters, `min_price`/`max_price` bounds, and custom sorting.
+2. **Multi-Seller Comparison & Persistent Cart (`/product/:slug`, `/cart`):**
+   - Buyers compare competing sellers by price, discount %, rating, review count, and live key stock. Cart and Wishlist persist in `localStorage` with stock clamping.
+3. **Authentication (`/login`, `/register`):**
+   - Supports account creation and sign-in with `bcrypt` password hashing and HS256 JWT tokens returned in JSON and cross-site `HttpOnly` cookies (`SameSite=None; Secure` over HTTPS).
+4. **Stripe Checkout (Test Mode) & Atomic Key Fulfillment (`/checkout`, `/checkout/success`):**
+   - Calls `POST /api/checkout/stripe-session` with server-authoritative EUR prices and cart `metadata.items_json` (falling back to simulated card payment when `STRIPE_SECRET_KEY` is omitted).
+   - `POST /api/orders/checkout` verifies payment with Stripe idempotently (`orders.stripe_session_id`), locks exact key rows via `SELECT ... FROM digital_keys ... FOR UPDATE SKIP LOCKED`, marks keys `SOLD`, and commits—or rolls back cleanly with `409 Conflict` if stock runs out.
+5. **Brevo Masked Security Email & Key Vault Reveal (`/orders/:id`):**
+   - Sends an Eneba-styled HTML email asynchronously via **Brevo's HTTPS API (`POST https://api.brevo.com/v3/smtp/email`)** over port 443 (prioritized ahead of SMTP because Render's free tier blocks outbound port 587).
+   - For security, emails never contain raw keys in plaintext—items show `••••-••••-••••` (*Key ready in your account*) alongside a **"CLICK TO SEE KEY"** button linking directly to `/orders/:id`, where users click **"Click to See Key"** to reveal and copy their activation code.
 
 ---
 
 ## Key Engineering Highlights
 
-1. **Typo-Tolerant Catalog Search (`pg_trgm`)**
-   - `products.title` is indexed with a PostgreSQL GIN trigram operator index (`idx_products_title_trgm`).
-   - `GET /api/products?q=...` scores matches using `GREATEST(similarity(p.title, $q), word_similarity($q, p.title))` alongside an `ILIKE` fallback, returning accurate top matches even for partial or misspelled queries (e.g., `q=cybrpunk` ➔ *Cyberpunk 2077*), combined with `platform`, `region`, `min_price`, `max_price`, and `sort` (`popular`, `price_asc`, `price_desc`, `newest`).
-
-2. **Dynamic Block-Driven Homepage (`homepage_blocks` JSONB)**
-   - `homepage_blocks` defines ordered layout sections (`hero_banner`, `best_sellers`, `flash_deals`, `recommended`) with arbitrary JSONB `config`.
-   - `GET /api/homepage` collects all referenced `product_ids`, hydrates live lowest offer price, discount percentage, and total key stock in a single batched CTE query (`GetProductsByIDs`), and preserves exact block ordering so the React frontend contains zero hardcoded product sections.
-
-3. **Concurrency-Safe Digital Key Fulfillment (`FOR UPDATE SKIP LOCKED`)**
-   - `POST /api/orders/checkout` runs inside a single `pgx.Tx` database transaction:
-     - Re-reads authoritative `price_cents` from `seller_offers` on the server (never trusts client-sent totals).
-     - Merges duplicate cart lines and sorts them deterministically by `seller_offer_id` to prevent lock-order deadlocks.
-     - Locks keys via `SELECT id, license_key FROM digital_keys WHERE seller_offer_id = $1 AND status = 'AVAILABLE' LIMIT $2 FOR UPDATE SKIP LOCKED`.
-     - If any line lacks stock, rolls back the entire transaction and returns `409 Conflict` identifying the lacking `seller_offer_id`, `requested`, and `available` counts.
-     - Otherwise inserts `orders` + `order_items`, updates locked keys to `status = 'SOLD'` with `order_item_id` and `sold_at`, and commits.
-
----
-
-## Scope Decisions & Trade-Offs (7-Day Assignment Window)
-
-| Area | Decision & Trade-Off | Rationale |
-| :--- | :--- | :--- |
-| **Payment Processing** | Hosted Stripe Checkout (Test Mode via `STRIPE_SECRET_KEY`) + automatic `card_sim` fallback | Uses server-verified EUR pricing and idempotent `stripe_session_id` fulfillment when configured, while staying runnable offline with zero external keys via the built-in sandbox simulator. |
-| **Transactional Emails** | Async HTML welcome & key-delivery emails via Resend (`RESEND_API_KEY`) + `[EMAIL PREVIEW]` stdout logs | Dispatches non-blocking Eneba-styled HTML receipts on registration and order completion without delaying checkout or failing tests when no API key is set. |
-| **Seller & Key Inventory** | Seeded via SQL migrations (`002_seed.sql`) + startup artwork/demo sync | Focuses engineering effort on buyer discovery, offer comparison, and concurrency-safe checkout rather than a merchant back-office CRUD portal. |
-| **Pricing & Currency** | Integer `price_cents` displayed in EUR (`€`) | Prevents floating-point rounding bugs while avoiding multi-currency FX conversion tables within the 7-day scope. |
-| **Session Storage** | HS256 JWT stored in `localStorage` (`72h` TTL) | Keeps cross-origin Vercel ➔ Render deployment straightforward without cookie `SameSite` / domain proxying complexity. |
+- **Concurrency-Safe Key Allocation (`backend/internal/repository/orders.go`):** Merges duplicate cart lines, sorts offers deterministically by `seller_offer_id` to prevent lock-order deadlocks, and uses PostgreSQL row-level `FOR UPDATE SKIP LOCKED` inside an atomic transaction (tested under 8-way concurrent buyer load).
+- **Resilient Production API & CORS Plumbing (`frontend/src/api/client.ts`, `frontend/vercel.json`, `backend/internal/middleware/cors.go`):** Frontend resolves `VITE_API_URL` / `VITE_API_BASE_URL` cleanly with a Render production fallback and Vercel `/api/:path*` proxy rewrites; backend validates single redirect URLs (`CleanFrontendURL`) and allows `https://*.vercel.app` origins alongside configured allowlists.
+- **Prioritized Multi-Transport Email Pipeline (`backend/internal/services/email.go`):** Evaluates `BREVO_API_KEY` (`api.brevo.com/v3/smtp/email` over HTTPS 443) **first**, falling back to STARTTLS SMTP (`587`/`465`) only when `BREVO_API_KEY` is empty, then Resend, then structured `[EMAIL PREVIEW]` stdout logs.
 
 ---
 
@@ -111,43 +88,46 @@ graph LR
 
 ```text
 Eneba Project/
-├── AGENT_LOG.md                   # Complete chronological log of AI-assisted turns
-├── README.md                      # Project documentation & deployment guide
-├── docker-compose.yml             # Local PostgreSQL 16 + auto-migrations
-├── render.yaml                    # Render Blueprint for Go backend
-├── .env.example                   # Root environment template
-├── .gitignore
+├── AGENT_LOG.md                   # Complete chronological prompt & change log (Turns 1–34)
+├── README.md                      # Submission architecture, setup & live links guide
+├── docker-compose.yml             # Local PostgreSQL 16 service
+├── render.yaml                    # Render Blueprint for Go backend deployment
+├── neon.ts                        # Neon Postgres project binding metadata
+├── .env.example                   # Root environment template (clean placeholders)
 ├── backend/
-│   ├── Dockerfile                 # Multi-stage static Linux amd64 Go build
+│   ├── .env.example               # Backend environment template
+│   ├── Dockerfile                 # Multi-stage Linux/amd64 Go container build
 │   ├── go.mod / go.sum
-│   ├── cmd/api/main.go            # Entrypoint, startup seed sync & graceful shutdown
+│   ├── cmd/
+│   │   ├── api/main.go            # HTTP server entrypoint, startup sync & graceful shutdown
+│   │   └── migrate/main.go        # Unpooled Postgres DDL/seed runner for Neon & local DBs
 │   ├── migrations/
-│   │   ├── 001_init.sql           # Extensions (pg_trgm, uuid-ossp), tables & indexes
-│   │   └── 002_seed.sql           # 16 games, 37 seller offers, 111 keys, 4 blocks, demo users
+│   │   ├── 001_init.sql           # Extensions (pg_trgm, uuid-ossp), schema & GIN indexes
+│   │   └── 002_seed.sql           # 17 games (GTA VI #1), 40 offers, 123 keys, 4 blocks, 2 demo users
 │   └── internal/
-│       ├── auth/                  # HS256 JWT generation & verification
-│       ├── config/                # Env config loader (ALLOWED_ORIGINS, DATABASE_URL)
-│       ├── db/                    # pgxpool PostgreSQL pool & ping health check
-│       ├── handlers/              # HTTP handlers + integration tests (catalog_test, checkout_test)
-│       ├── middleware/            # JWT Bearer authentication middleware
-│       ├── models/                # Strictly typed domain & API DTO structs
-│       ├── repository/            # SQL queries, pg_trgm search & transactional checkout
-│       ├── router/                # Chi router, CORS & public/protected route groups
-│       └── services/              # Block hydration, auth validation & checkout orchestration
+│       ├── auth/                  # HS256 JWT generation & validation
+│       ├── config/                # Env sanitization, URL validation & CORS origin builder
+│       ├── db/                    # pgxpool Neon-compatible (simple protocol for -pooler) setup
+│       ├── handlers/              # REST handlers + 18 Go integration & unit tests
+│       ├── middleware/            # Bearer/cookie JWT auth & Vercel/localhost CORS middleware
+│       ├── models/                # Domain & API DTO definitions
+│       ├── repository/            # pg_trgm search, batch hydration & SKIP LOCKED checkout
+│       ├── router/                # Chi router & protected/public routes
+│       └── services/              # Catalog sync, Stripe Test Mode client & Brevo/SMTP/Resend emailer
 └── frontend/
-    ├── vercel.json                # SPA rewrite rules for client-side routes
-    ├── .env.example               # Frontend VITE_API_URL template
+    ├── .env.example               # Frontend VITE_API_BASE_URL / VITE_API_URL template
+    ├── vercel.json                # API proxy rewrite + SPA fallback rules
     ├── package.json
-    ├── tailwind.config.js         # Eneba violet/yellow/teal theme tokens
-    ├── scripts/run-tests.mjs      # esbuild + Node test harness
+    ├── tailwind.config.js         # Eneba violet / cyber-yellow / teal design tokens
+    ├── scripts/run-tests.mjs      # esbuild + Node test harness (15 frontend tests)
     ├── tests/purchaseFlow.test.mjs
     └── src/
-        ├── api/                   # Typed fetch client & ApiError handling
-        ├── components/            # Navbar, SearchBar, ProductCard, HeroBanner, PlatformBadge, OrderKeyCard
-        ├── context/               # AuthContext & localStorage-persisted CartContext
+        ├── api/client.ts          # Typed fetch client, error handling & prod URL resolution
+        ├── components/            # Navbar, SearchBar, ProductCard, CustomSelect, HeroBanner, OrderKeyCard
+        ├── context/               # AuthContext, CartContext, WishlistContext
         ├── pages/                 # HomePage, StorePage, ProductPage, CartPage, AuthPage, CheckoutPage, Orders
-        ├── types/                 # TypeScript interfaces matching Go models
-        └── utils/                 # Formatting, redirect sanitization, block parsers & hooks
+        ├── types/api.ts           # TypeScript API contracts matching Go structs
+        └── utils/                 # Price/date formatters, redirect sanitization & block parsers
 ```
 
 ---
@@ -156,30 +136,47 @@ Eneba Project/
 
 ### Prerequisites
 - **Go** `1.22+`
-- **Node.js** `20+` and **npm** (or **pnpm**)
-- **PostgreSQL** `16+` (or Docker Compose)
+- **Node.js** `20+` and **npm**
+- **PostgreSQL** `16+` (Docker Compose, local Postgres, or Neon)
 
-### 1. Start PostgreSQL & Migrate
+### 1. Configure Environment Templates
+Copy the example templates (no `.env` files or secret keys are tracked in git):
 ```bash
 cp .env.example .env
-docker-compose up -d postgres
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
-*(Or point `DATABASE_URL` in `.env` to a local/Neon/Supabase PostgreSQL instance and run `backend/migrations/001_init.sql` then `backend/migrations/002_seed.sql`.)*
+Key variables in `backend/.env` and `frontend/.env`:
+- `DATABASE_URL` — PostgreSQL connection string (e.g., local Docker `postgres://eneba_user:eneba_password@localhost:5432/eneba_marketplace?sslmode=disable` or Neon `?sslmode=require`)
+- `JWT_SECRET` — Signing secret for HS256 tokens (32+ chars in production)
+- `FRONTEND_URL` — Frontend base URL for Stripe return redirects and email CTA links (`http://localhost:5173` locally)
+- `STRIPE_SECRET_KEY` — Optional Stripe Test Mode key (`sk_test_...`); leave blank to use the built-in simulated payment mode
+- `BREVO_API_KEY` & `SMTP_FROM` — Optional Brevo API key (`xkeysib-...`) and verified sender address for HTTPS port 443 email delivery; leave blank for `[EMAIL PREVIEW]` stdout logs
+- `VITE_API_BASE_URL` — Frontend API URL (`http://localhost:8080` for local Vite dev or proxy)
 
-### 2. Run Backend & Integration Tests
-The Go integration suite verifies health checks, dynamic homepage hydration, `pg_trgm` typo search (`q=cybrpunk`), filtering/sorting, multi-seller stock counts, auth, `409 Conflict` rollback, and 8-way concurrent buyer race-condition safety:
+### 2. Start PostgreSQL & Seed the Database
+```bash
+# Option A: Start local PostgreSQL 16 via Docker Compose (auto-runs migrations on fresh volume)
+docker-compose up -d postgres
+
+# Option B: Apply migrations directly against any local or Neon PostgreSQL database
+cd backend
+go run ./cmd/migrate
+```
+
+### 3. Run Backend Tests & API Server
+The Go suite (`18` integration & unit tests) verifies health checks, dynamic CMS block hydration, **Grand Theft Auto VI** spotlight & catalog ordering, `pg_trgm` fuzzy search, multi-platform/region/price filtering, concurrent `FOR UPDATE SKIP LOCKED` checkout safety, Stripe session creation/verification/idempotency, CORS origins, masked key HTML emails, and prioritized Brevo HTTPS API delivery:
 ```bash
 cd backend
-go test -v ./...
+go test -v -count=1 ./...
 go run ./cmd/api
 ```
-API listens on `http://localhost:8080`.
+Backend API listens on `http://localhost:8080`.
 
-### 3. Run Frontend & Automated Tests
-The frontend test suite verifies `cartReducer` stock clamping, `CartPage`, unauthenticated redirects on `CheckoutPage` and `OrdersPage`, `OrderKeyCard` reveal/masking, and `OrderDetailPage`:
+### 4. Run Frontend Tests, Build & Dev Server
+The frontend test suite (`15` tests) verifies `cartReducer` stock clamping, `CartPage`, auth redirects on `CheckoutPage` and `OrdersPage`, masked `OrderKeyCard` reveal UX, `OrderDetailPage`, and production API URL resolution:
 ```bash
 cd frontend
-cp .env.example .env
 npm install
 npm test
 npm run build
@@ -189,25 +186,6 @@ Storefront runs on `http://localhost:5173`.
 
 ---
 
-### Optional Environment Variables (Stripe Test Mode & Emails)
+## AI-Assisted Development Log
 
-The application runs out-of-the-box with simulated card checkout and stdout `[EMAIL PREVIEW]` logging. To enable hosted Stripe Test Mode or Resend HTML delivery, set these optional variables in `.env` (see [`backend/.env.example`](./backend/.env.example)):
-
-- `FRONTEND_URL` — Base URL used for Stripe Checkout success/cancel redirects and email CTAs (default `http://localhost:5173`).
-- `STRIPE_SECRET_KEY` — Stripe Test Mode secret key (`sk_test_...`). Enables `GET /api/config/payment` (`stripe_enabled: true`), `POST /api/checkout/stripe-session`, and idempotent fulfillment via `orders.stripe_session_id`.
-- `RESEND_API_KEY` — Resend API key (`re_...`) for dispatching Eneba-styled welcome and key-delivery HTML emails asynchronously.
-- `EMAIL_FROM` — Verified sender address (default `onboarding@resend.dev`).
-
----
-
-## Cloud Deployment (Neon / Supabase + Render + Vercel)
-
-1. **PostgreSQL (Neon / Supabase):** Run `backend/migrations/001_init.sql` and `backend/migrations/002_seed.sql`, then copy the connection URI with `?sslmode=require`.
-2. **Backend (Render):** Deploy using `render.yaml` (`rootDir: backend`, Docker runtime). Set `DATABASE_URL` and `ALLOWED_ORIGINS` (your Vercel URL + `http://localhost:5173`).
-3. **Frontend (Vercel):** Import the repo with **Root Directory** set to `frontend`, set `VITE_API_URL` to your Render URL, and deploy (`frontend/vercel.json` handles SPA rewrites).
-
----
-
-## AI-Assisted Workflow
-
-Every prompt, architectural plan, code change, and test verification across the entire build is recorded chronologically in [**`AGENT_LOG.md`**](./AGENT_LOG.md).
+Every user prompt, implementation plan, architectural decision, code change, and test run across the project lifecycle is documented chronologically in [**`AGENT_LOG.md`**](./AGENT_LOG.md).
