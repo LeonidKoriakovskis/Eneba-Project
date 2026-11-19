@@ -1395,3 +1395,32 @@ Fix the production API URL resolution in `frontend/` so the deployed Vercel app 
 - `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
 - `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, built in `7.01s`).
 - Committed changes to `main` and pushed to `origin/main` to trigger Vercel auto-deployment.
+
+
+---
+
+## Turn 29: Add Production Render API Fallback (`import.meta.env.PROD`) & Verify Vercel Rewrite Ordering
+
+### 1. User Prompt
+```text
+My deployed Vercel app (`https://eneba-project-lime.vercel.app`) now displays: `Unexpected non-JSON response from API server. Please retry or check VITE_API_URL configuration.` Remember to continue appending my exact prompt and your full response/summary of changes to `AGENT_LOG.md`.
+
+Fix both the rewrite ordering and the production API URL fallback so it works 100% reliably on Vercel:
+1. In `frontend/vercel.json`, ensure the `/api/:path*` proxy rewrite (`"source": "/api/:path*", "destination": "https://eneba-api-ztqj.onrender.com/api/:path*"`) is listed **FIRST** (above the SPA catch-all `"source": "/(.*)", "destination": "/index.html"`), because Vercel evaluates `rewrites` top-to-bottom and a catch-all first rule intercepts `/api/*` with `index.html`.
+2. In `frontend/src/api/` (where `API_BASE_URL` is resolved), if `VITE_API_URL` and `VITE_API_BASE_URL` are unset in a production build (`import.meta.env.PROD`), fall back to `'https://eneba-api-ztqj.onrender.com'` instead of `''` so production builds always hit the live Render API directly even if Vercel env vars aren't injected.
+3. Run `npm run build` in `frontend/`, commit, and push to `main`.
+```
+
+### 2. Summary of Changes
+1. **`frontend/vercel.json`**:
+   - Verified `/api/:path*` -> `https://eneba-api-ztqj.onrender.com/api/:path*` is the first rule above `/(.*)` -> `/index.html`.
+2. **`frontend/src/api/client.ts`**:
+   - Exported `DEFAULT_PROD_API_URL = 'https://eneba-api-ztqj.onrender.com'`.
+   - Updated `resolveApiBaseUrl(apiUrl, apiBaseUrl, isProd)` to strip accidental wrapping quotes, whitespace, trailing slashes, and trailing `/api`, and fall back to `DEFAULT_PROD_API_URL` whenever `import.meta.env.PROD` is true and both `VITE_API_URL` and `VITE_API_BASE_URL` are unset (while local dev builds still default to `''` for Vite's `/api` proxy).
+3. **`frontend/scripts/run-tests.mjs` & `frontend/tests/purchaseFlow.test.mjs`**:
+   - Added `'import.meta.env.PROD': 'false'` in the test runner and expanded `resolveApiBaseUrl` unit tests to assert `isProd = true` fallback, `isProd = false` empty fallback, and quote stripping.
+
+### 3. Verification Results
+- `npm test` (`Eneba Project/frontend`): **15/15 tests passed**.
+- `npm run build` (`Eneba Project/frontend`): `tsc -b && vite build` succeeded cleanly (`✓ 1631 modules transformed`, `dist/assets/index-CwJnLk_E.js`, built in `6.40s`) and embeds `https://eneba-api-ztqj.onrender.com` in the compiled bundle.
+- Committed and pushed to `origin/main` so Vercel auto-deploys the production fix.

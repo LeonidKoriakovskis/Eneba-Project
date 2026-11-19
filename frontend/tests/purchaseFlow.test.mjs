@@ -14,6 +14,7 @@ const {
   CartProvider,
   CheckoutPage,
   CustomSelect,
+  DEFAULT_PROD_API_URL,
   MAX_QTY_PER_OFFER,
   MemoryRouter,
   Navbar,
@@ -506,11 +507,14 @@ test('wishlistReducer persists items in eneba_wishlist, Navbar shows live count 
 });
 
 
-test('resolveApiBaseUrl handles env fallbacks, trailing slashes, and rejects non-JSON 200 responses', async () => {
+test('resolveApiBaseUrl handles env fallbacks, prod default, trailing slashes, and rejects non-JSON 200 responses', async () => {
   assert.equal(resolveApiBaseUrl('https://eneba-api-ztqj.onrender.com/', ''), 'https://eneba-api-ztqj.onrender.com');
   assert.equal(resolveApiBaseUrl('', 'https://eneba-api-ztqj.onrender.com/api/'), 'https://eneba-api-ztqj.onrender.com');
-  assert.equal(resolveApiBaseUrl('  ', undefined), '');
-  assert.equal(resolveApiBaseUrl(undefined, undefined), '');
+  assert.equal(resolveApiBaseUrl('"https://eneba-api-ztqj.onrender.com/"', ''), 'https://eneba-api-ztqj.onrender.com');
+  assert.equal(resolveApiBaseUrl('  ', undefined, false), '');
+  assert.equal(resolveApiBaseUrl(undefined, undefined, false), '');
+  assert.equal(resolveApiBaseUrl('', '', true), DEFAULT_PROD_API_URL);
+  assert.equal(resolveApiBaseUrl(undefined, undefined, true), 'https://eneba-api-ztqj.onrender.com');
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response('<!doctype html><html><body>SPA</body></html>', {

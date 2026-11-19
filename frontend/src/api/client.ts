@@ -15,14 +15,24 @@ import type {
   StripeSessionResponse,
 } from '../types/api';
 
-export function resolveApiBaseUrl(apiUrl?: string, apiBaseUrl?: string): string {
-  const raw = (apiUrl || apiBaseUrl || '').trim().replace(/\/+$/, '');
-  return raw.replace(/\/api$/i, '');
+export const DEFAULT_PROD_API_URL = 'https://eneba-api-ztqj.onrender.com';
+
+export function resolveApiBaseUrl(apiUrl?: string, apiBaseUrl?: string, isProd = false): string {
+  const cleaned = (apiUrl || apiBaseUrl || '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/api$/i, '');
+
+  if (cleaned) return cleaned;
+  return isProd ? DEFAULT_PROD_API_URL : '';
 }
 
 export const API_BASE_URL: string = resolveApiBaseUrl(
   import.meta.env.VITE_API_URL,
   import.meta.env.VITE_API_BASE_URL,
+  Boolean(import.meta.env.PROD),
 );
 
 export class ApiError extends Error {
